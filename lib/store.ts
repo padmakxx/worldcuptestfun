@@ -7,15 +7,14 @@ const BLOB_PREFIX = "wc2026/";
 
 // ---------- Vercel Blob (production) ----------
 async function blobGet<T>(key: string): Promise<T | null> {
-  const { list, head } = await import("@vercel/blob");
+  const { list } = await import("@vercel/blob");
   try {
     const pathname = BLOB_PREFIX + key.replace(/[:/]/g, "_") + ".json";
     const { blobs } = await list({ prefix: pathname });
-    if (blobs.length === 0) return null;
-    // Use head to confirm it exists, then fetch content
     const blob = blobs.find(b => b.pathname === pathname);
     if (!blob) return null;
-    const res = await fetch(blob.url, { cache: "no-store" });
+    // Append timestamp to bust CDN cache on every read
+    const res = await fetch(`${blob.url}?t=${Date.now()}`, { cache: "no-store" });
     if (!res.ok) return null;
     return await res.json() as T;
   } catch {
@@ -30,6 +29,7 @@ async function blobSet(key: string, value: unknown): Promise<void> {
     access: "public",
     contentType: "application/json",
     allowOverwrite: true,
+    cacheControlMaxAge: 0, // never cache — data changes frequently
   });
 }
 
@@ -40,7 +40,7 @@ async function blobGetAll<T>(prefix: string): Promise<Record<string, T>> {
   const result: Record<string, T> = {};
   await Promise.all(blobs.map(async blob => {
     try {
-      const res = await fetch(blob.url, { cache: "no-store" });
+      const res = await fetch(`${blob.url}?t=${Date.now()}`, { cache: "no-store" });
       if (!res.ok) return;
       const val = await res.json() as T;
       // Restore original key format from pathname
