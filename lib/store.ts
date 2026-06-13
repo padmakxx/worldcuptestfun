@@ -1,9 +1,11 @@
 // Dual-mode store: Vercel Blob in production, file-based JSON in local dev
-// Production detects BLOB_READ_WRITE_TOKEN (auto-injected when you create a Blob store in Vercel dashboard)
-
-const isVercel = !!process.env.BLOB_READ_WRITE_TOKEN;
+// isVercel() checked at runtime so the build-time env var absence doesn't freeze it to false
 
 const BLOB_PREFIX = "wc2026/";
+
+function isVercel() {
+  return !!process.env.BLOB_READ_WRITE_TOKEN;
+}
 
 // ---------- Vercel Blob (production) ----------
 async function blobGet<T>(key: string): Promise<T | null> {
@@ -13,8 +15,7 @@ async function blobGet<T>(key: string): Promise<T | null> {
     const { blobs } = await list({ prefix: pathname.replace(/\.json$/, "") });
     const blob = blobs.find(b => b.pathname === pathname);
     if (!blob) return null;
-    // downloadUrl bypasses CDN cache — always returns fresh content
-    const res = await fetch(blob.downloadUrl, { cache: "no-store" });
+    const res = await fetch(blob.url, { cache: "no-store" });
     if (!res.ok) return null;
     return await res.json() as T;
   } catch {
@@ -40,13 +41,10 @@ async function blobGetAll<T>(prefix: string): Promise<Record<string, T>> {
   const result: Record<string, T> = {};
   await Promise.all(blobs.map(async blob => {
     try {
-      const res = await fetch(blob.downloadUrl, { cache: "no-store" });
+      const res = await fetch(blob.url, { cache: "no-store" });
       if (!res.ok) return;
       const val = await res.json() as T;
-      // Restore original key format from pathname
-      const rawKey = blob.pathname
-        .slice(BLOB_PREFIX.length)
-        .replace(/\.json$/, "");
+      const rawKey = blob.pathname.slice(BLOB_PREFIX.length).replace(/\.json$/, "");
       result[rawKey] = val;
     } catch { /* skip */ }
   }));
@@ -57,9 +55,7 @@ async function blobDel(key: string): Promise<void> {
   const { list, del } = await import("@vercel/blob");
   const pathname = BLOB_PREFIX + key.replace(/[:/]/g, "_") + ".json";
   const { blobs } = await list({ prefix: pathname });
-  if (blobs.length > 0) {
-    await del(blobs.map(b => b.url));
-  }
+  if (blobs.length > 0) await del(blobs.map(b => b.url));
 }
 
 // ---------- File-based JSON (local dev) ----------
@@ -96,16 +92,16 @@ async function fileGetAll<T>(prefix: string): Promise<Record<string, T>> {
 }
 
 export async function kget<T>(key: string): Promise<T | null> {
-  return isVercel ? blobGet<T>(key) : fileGet<T>(key);
+  return isVercel() ? blobGet<T>(key) : fileGet<T>(key);
 }
 export async function kset(key: string, value: unknown): Promise<void> {
-  return isVercel ? blobSet(key, value) : fileSet(key, value);
+  return isVercel() ? blobSet(key, value) : fileSet(key, value);
 }
 export async function kgetall<T>(prefix: string): Promise<Record<string, T>> {
-  return isVercel ? blobGetAll<T>(prefix) : fileGetAll<T>(prefix);
+  return isVercel() ? blobGetAll<T>(prefix) : fileGetAll<T>(prefix);
 }
 export async function kdel(key: string): Promise<void> {
-  return isVercel ? blobDel(key) : (async () => {
+  return isVercel() ? blobDel(key) : (async () => {
     const f = fp(key);
     if (existsSync(f)) { const { unlinkSync } = await import("fs"); unlinkSync(f); }
   })();
