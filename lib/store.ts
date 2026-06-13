@@ -10,10 +10,11 @@ async function blobGet<T>(key: string): Promise<T | null> {
   const { list } = await import("@vercel/blob");
   try {
     const pathname = BLOB_PREFIX + key.replace(/[:/]/g, "_") + ".json";
-    const { blobs } = await list({ prefix: pathname });
-    const blob = blobs.find(b => b.pathname === pathname);
+    // List by prefix without .json so we match even if a suffix was added historically
+    const { blobs } = await list({ prefix: pathname.replace(/\.json$/, "") });
+    // Prefer exact pathname match, fall back to first result
+    const blob = blobs.find(b => b.pathname === pathname) ?? blobs[0];
     if (!blob) return null;
-    // Append timestamp to bust CDN cache on every read
     const res = await fetch(`${blob.url}?t=${Date.now()}`, { cache: "no-store" });
     if (!res.ok) return null;
     return await res.json() as T;
@@ -23,15 +24,12 @@ async function blobGet<T>(key: string): Promise<T | null> {
 }
 
 async function blobSet(key: string, value: unknown): Promise<void> {
-  const { put, list, del } = await import("@vercel/blob");
+  const { put } = await import("@vercel/blob");
   const pathname = BLOB_PREFIX + key.replace(/[:/]/g, "_") + ".json";
-  // Delete existing blob first — new put gets a fresh URL, bypassing any CDN cache
-  const { blobs } = await list({ prefix: pathname });
-  const existing = blobs.filter(b => b.pathname === pathname);
-  if (existing.length > 0) await del(existing.map(b => b.url));
   await put(pathname, JSON.stringify(value), {
     access: "public",
     contentType: "application/json",
+    allowOverwrite: true,
     addRandomSuffix: false,
   });
 }
