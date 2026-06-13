@@ -1,6 +1,7 @@
 import { getSession, getAllUsers, getUser, saveUser } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import Link from "next/link";
+import ResetPinButton from "./ResetPinButton";
 
 interface Props {
   searchParams: Promise<{ approve?: string; deny?: string }>;
@@ -12,7 +13,6 @@ export default async function AdminUsersPage({ searchParams }: Props) {
 
   const { approve, deny } = await searchParams;
 
-  // Handle approve/deny
   if (approve) {
     const user = await getUser(approve);
     if (user) { user.approved = true; await saveUser(user); }
@@ -25,8 +25,8 @@ export default async function AdminUsersPage({ searchParams }: Props) {
   }
 
   const users = await getAllUsers();
-  const pending = users.filter(u => !u.approved);
-  const approved = users.filter(u => u.approved);
+  const pending = users.filter(u => !u.approved && !u.isAdmin);
+  const approved = users.filter(u => u.approved && !u.isAdmin);
 
   return (
     <div className="min-h-screen">
@@ -61,19 +61,22 @@ export default async function AdminUsersPage({ searchParams }: Props) {
           <h2 className="text-xl font-bold text-emerald-400 mb-4">✅ Approved ({approved.length})</h2>
           <div className="space-y-3">
             {approved.map(u => (
-              <div key={u.id} className="card-glow rounded-2xl p-4 flex items-center justify-between gap-4">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-full bg-gradient-to-br from-yellow-400 to-orange-500 flex items-center justify-center text-black font-black">
-                    {u.nickname[0].toUpperCase()}
+              <div key={u.id} className="card-glow rounded-2xl p-4">
+                <div className="flex items-center justify-between gap-4 mb-3">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-full bg-gradient-to-br from-yellow-400 to-orange-500 flex items-center justify-center text-black font-black">
+                      {u.nickname[0].toUpperCase()}
+                    </div>
+                    <div>
+                      <div className="font-bold text-white">{u.nickname}</div>
+                      <div className="text-sm text-gray-400">@{u.username}</div>
+                    </div>
                   </div>
-                  <div>
-                    <div className="font-bold text-white">{u.nickname}</div>
-                    <div className="text-sm text-gray-400">@{u.username}</div>
-                  </div>
+                  <Link href={`?deny=${u.id}`} className="text-xs text-red-400 hover:text-red-300 border border-red-500/20 px-3 py-1.5 rounded-lg">
+                    Revoke
+                  </Link>
                 </div>
-                <Link href={`?deny=${u.id}`} className="text-xs text-red-400 hover:text-red-300 border border-red-500/20 px-3 py-1.5 rounded-lg">
-                  Revoke
-                </Link>
+                <ResetPinButton userId={u.id} nickname={u.nickname} />
               </div>
             ))}
           </div>
