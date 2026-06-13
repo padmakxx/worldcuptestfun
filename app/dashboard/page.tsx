@@ -4,6 +4,7 @@ import { MATCHES } from "@/lib/data/matches";
 import { kget } from "@/lib/store";
 import { getPrediction } from "@/lib/scoring";
 import Link from "next/link";
+import LiveScoreTicker from "@/components/LiveScoreTicker";
 
 interface MatchWithOverride {
   id: string;
@@ -83,6 +84,9 @@ export default async function Dashboard() {
           </h1>
           <p className="text-gray-400 mt-1">Ready to predict some matches?</p>
         </div>
+
+        {/* Live Score Ticker */}
+        <LiveScoreTicker date={today} />
 
         {/* Stats strip */}
         <div className="grid grid-cols-3 gap-4 mb-8">

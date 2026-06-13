@@ -11,6 +11,7 @@ export interface Match {
   venue: string;
   city: string;
   status: "upcoming" | "live" | "completed";
+  espnEventId?: string; // ESPN event ID for live data
   result?: {
     team1Score: number;
     team2Score: number;
@@ -72,16 +73,16 @@ export const FLAGS: Record<string, string> = {
 
 export const MATCHES: Match[] = [
   // June 11
-  { id: "m1", matchNumber: 1, date: "2026-06-11", time: "1:00 PM CST", group: "A", team1: "Mexico", team2: "South Africa", team1Flag: "🇲🇽", team2Flag: "🇿🇦", venue: "Estadio Azteca", city: "Mexico City", status: "completed", result: { team1Score: 2, team2Score: 0, motm: "Raúl Jiménez" } },
-  { id: "m2", matchNumber: 2, date: "2026-06-11", time: "8:00 PM CST", group: "A", team1: "South Korea", team2: "Czechia", team1Flag: "🇰🇷", team2Flag: "🇨🇿", venue: "Estadio Akron", city: "Guadalajara", status: "completed", result: { team1Score: 2, team2Score: 1, motm: "Son Heung-min" } },
+  { id: "m1", matchNumber: 1, date: "2026-06-11", time: "1:00 PM CST", group: "A", team1: "Mexico", team2: "South Africa", team1Flag: "🇲🇽", team2Flag: "🇿🇦", venue: "Estadio Azteca", city: "Mexico City", status: "completed", espnEventId: "760415", result: { team1Score: 2, team2Score: 0, motm: "Raúl Jiménez" } },
+  { id: "m2", matchNumber: 2, date: "2026-06-11", time: "8:00 PM CST", group: "A", team1: "South Korea", team2: "Czechia", team1Flag: "🇰🇷", team2Flag: "🇨🇿", venue: "Estadio Akron", city: "Guadalajara", status: "completed", espnEventId: "760416", result: { team1Score: 2, team2Score: 1, motm: "Son Heung-min" } },
   // June 12
-  { id: "m3", matchNumber: 3, date: "2026-06-12", time: "3:00 PM ET", group: "B", team1: "Canada", team2: "Bosnia and Herzegovina", team1Flag: "🇨🇦", team2Flag: "🇧🇦", venue: "BMO Field", city: "Toronto", status: "completed", result: { team1Score: 1, team2Score: 1 } },
-  { id: "m4", matchNumber: 4, date: "2026-06-12", time: "6:00 PM PT", group: "D", team1: "United States", team2: "Paraguay", team1Flag: "🇺🇸", team2Flag: "🇵🇾", venue: "SoFi Stadium", city: "Los Angeles", status: "completed", result: { team1Score: 4, team2Score: 1, motm: "Christian Pulisic" } },
+  { id: "m3", matchNumber: 3, date: "2026-06-12", time: "3:00 PM ET", group: "B", team1: "Canada", team2: "Bosnia and Herzegovina", team1Flag: "🇨🇦", team2Flag: "🇧🇦", venue: "BMO Field", city: "Toronto", status: "completed", espnEventId: "760417", result: { team1Score: 1, team2Score: 1 } },
+  { id: "m4", matchNumber: 4, date: "2026-06-12", time: "6:00 PM PT", group: "D", team1: "United States", team2: "Paraguay", team1Flag: "🇺🇸", team2Flag: "🇵🇾", venue: "SoFi Stadium", city: "Los Angeles", status: "completed", espnEventId: "760421", result: { team1Score: 4, team2Score: 1, motm: "Christian Pulisic" } },
   // June 13
-  { id: "m5", matchNumber: 5, date: "2026-06-13", time: "12:00 PM PT", group: "B", team1: "Qatar", team2: "Switzerland", team1Flag: "🇶🇦", team2Flag: "🇨🇭", venue: "Levi's Stadium", city: "San Francisco", status: "completed", result: { team1Score: 0, team2Score: 3 } },
-  { id: "m6", matchNumber: 6, date: "2026-06-13", time: "6:00 PM ET", group: "C", team1: "Brazil", team2: "Morocco", team1Flag: "🇧🇷", team2Flag: "🇲🇦", venue: "MetLife Stadium", city: "New York/NJ", status: "upcoming" },
-  { id: "m7", matchNumber: 7, date: "2026-06-13", time: "9:00 PM ET", group: "C", team1: "Haiti", team2: "Scotland", team1Flag: "🇭🇹", team2Flag: "🏴󠁧󠁢󠁳󠁣󠁴󠁿", venue: "Gillette Stadium", city: "Boston", status: "upcoming" },
-  { id: "m8", matchNumber: 8, date: "2026-06-13", time: "6:00 PM PT", group: "D", team1: "Australia", team2: "Turkey", team1Flag: "🇦🇺", team2Flag: "🇹🇷", venue: "BC Place", city: "Vancouver", status: "upcoming" },
+  { id: "m5", matchNumber: 5, date: "2026-06-13", time: "12:00 PM PT", group: "B", team1: "Qatar", team2: "Switzerland", team1Flag: "🇶🇦", team2Flag: "🇨🇭", venue: "Levi's Stadium", city: "San Francisco", status: "upcoming", espnEventId: "760420" },
+  { id: "m6", matchNumber: 6, date: "2026-06-13", time: "6:00 PM ET", group: "C", team1: "Brazil", team2: "Morocco", team1Flag: "🇧🇷", team2Flag: "🇲🇦", venue: "MetLife Stadium", city: "New York/NJ", status: "upcoming", espnEventId: "760419" },
+  { id: "m7", matchNumber: 7, date: "2026-06-13", time: "9:00 PM ET", group: "C", team1: "Haiti", team2: "Scotland", team1Flag: "🇭🇹", team2Flag: "🏴󠁧󠁢󠁳󠁣󠁴󠁿", venue: "Gillette Stadium", city: "Boston", status: "upcoming", espnEventId: "760418" },
+  { id: "m8", matchNumber: 8, date: "2026-06-13", time: "6:00 PM PT", group: "D", team1: "Australia", team2: "Turkey", team1Flag: "🇦🇺", team2Flag: "🇹🇷", venue: "BC Place", city: "Vancouver", status: "upcoming", espnEventId: "760422" },
   // June 14
   { id: "m9", matchNumber: 9, date: "2026-06-14", time: "12:00 PM CDT", group: "E", team1: "Germany", team2: "Curaçao", team1Flag: "🇩🇪", team2Flag: "🇨🇼", venue: "NRG Stadium", city: "Houston", status: "upcoming" },
   { id: "m10", matchNumber: 10, date: "2026-06-14", time: "3:00 PM CDT", group: "F", team1: "Netherlands", team2: "Japan", team1Flag: "🇳🇱", team2Flag: "🇯🇵", venue: "AT&T Stadium", city: "Dallas", status: "upcoming" },

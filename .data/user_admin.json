@@ -1,0 +1,9 @@
+{
+  "id": "admin",
+  "username": "admin",
+  "nickname": "Admin",
+  "pinHash": "$2b$10$h5GhE3FnHuv7LCaURawu6.mWrLdmmPMgUulWDlAxNRBTkz0TG8/lW",
+  "approved": true,
+  "isAdmin": true,
+  "createdAt": "2026-06-13T10:38:28.271Z"
+}

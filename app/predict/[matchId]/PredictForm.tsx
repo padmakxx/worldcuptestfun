@@ -3,6 +3,8 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Match } from "@/lib/data/matches";
+import dynamic from "next/dynamic";
+const LineupPanel = dynamic(() => import("@/components/LineupPanel"), { ssr: false });
 import { Player } from "@/lib/data/players";
 import { Prediction } from "@/lib/scoring";
 
@@ -107,6 +109,15 @@ export default function PredictForm({ match, players, existing }: Props) {
           </div>
           <div className="text-sm text-gray-500">📍 {match.venue}, {match.city}</div>
         </div>
+
+        {/* Lineup Section */}
+        <LineupPanel
+          matchId={match.id}
+          team1Flag={match.team1Flag}
+          team2Flag={match.team2Flag}
+          team1Name={match.team1}
+          team2Name={match.team2}
+        />
 
         <form onSubmit={handleSubmit} className="space-y-6">
           {/* Score prediction */}
