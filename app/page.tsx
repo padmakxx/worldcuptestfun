@@ -52,6 +52,30 @@ export default async function Home() {
           </div>
         </div>
 
+        {/* Prize Banner */}
+        <div className="relative z-10 mb-6">
+          <div className="inline-flex items-center gap-4 px-6 py-3 rounded-2xl text-sm font-bold"
+            style={{background:"linear-gradient(135deg,rgba(255,215,0,0.15),rgba(255,165,0,0.08))",border:"1px solid rgba(255,215,0,0.35)"}}>
+            <div className="flex items-center gap-2">
+              <span className="text-2xl">🥇</span>
+              <div className="text-left">
+                <div className="text-yellow-400 font-black text-base leading-tight">₹200</div>
+                <div className="text-yellow-600 text-xs font-semibold">1st Place</div>
+              </div>
+            </div>
+            <div className="w-px h-10 bg-yellow-600/30" />
+            <div className="flex items-center gap-2">
+              <span className="text-2xl">🥈</span>
+              <div className="text-left">
+                <div className="text-gray-300 font-black text-base leading-tight">₹100</div>
+                <div className="text-gray-500 text-xs font-semibold">2nd Place</div>
+              </div>
+            </div>
+            <div className="w-px h-10 bg-yellow-600/30" />
+            <div className="text-yellow-500/80 text-xs font-semibold">Overall Winner</div>
+          </div>
+        </div>
+
         {/* Main headline */}
         <div className="relative z-10 max-w-4xl">
           {/* Legend chips */}
