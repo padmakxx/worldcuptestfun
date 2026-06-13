@@ -14,6 +14,7 @@ export default function ResetPinButton({ userId, nickname }: { userId: string; n
     const res = await fetch("/api/admin/reset-pin", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
+      credentials: "include",
       body: JSON.stringify({ userId, newPin: pin }),
     });
     setLoading(false);
