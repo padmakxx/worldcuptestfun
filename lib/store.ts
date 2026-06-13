@@ -10,10 +10,9 @@ async function blobGet<T>(key: string): Promise<T | null> {
   const { list } = await import("@vercel/blob");
   try {
     const pathname = BLOB_PREFIX + key.replace(/[:/]/g, "_") + ".json";
-    // List by prefix without .json so we match even if a suffix was added historically
     const { blobs } = await list({ prefix: pathname.replace(/\.json$/, "") });
-    // Prefer exact pathname match, fall back to first result
-    const blob = blobs.find(b => b.pathname === pathname) ?? blobs[0];
+    const blob = blobs.find(b => b.pathname === pathname);
+    if (!blob) return null;
     if (!blob) return null;
     const res = await fetch(`${blob.url}?t=${Date.now()}`, { cache: "no-store" });
     if (!res.ok) return null;
