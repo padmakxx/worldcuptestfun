@@ -16,8 +16,31 @@ export default function ResultForm({ match }: { match: MatchWithResult }) {
   const [search, setSearch] = useState("");
   const [firstSearch, setFirstSearch] = useState("");
   const [loading, setLoading] = useState(false);
+  const [fetching, setFetching] = useState(false);
+  const [fetchMsg, setFetchMsg] = useState<{ ok: boolean; text: string } | null>(null);
   const [success, setSuccess] = useState(false);
   const router = useRouter();
+
+  const fetchFromESPN = async () => {
+    setFetching(true);
+    setFetchMsg(null);
+    try {
+      const res = await fetch(`/api/admin/fetch-result?matchId=${match.id}`, { credentials: "include" });
+      const data = await res.json();
+      if (!res.ok) {
+        setFetchMsg({ ok: false, text: data.error ?? "Failed to fetch" });
+      } else {
+        setScore1(String(data.team1Score));
+        setScore2(String(data.team2Score));
+        if (data.firstScorer) setFirstScorer(data.firstScorer);
+        if (data.motm) setMotm(data.motm);
+        setFetchMsg({ ok: true, text: `Fetched! Score: ${data.team1Score}–${data.team2Score}${data.firstScorer ? ` · 1st scorer: ${data.firstScorer}` : ""}${data.motm ? ` · MOTM: ${data.motm}` : " · Pick MOTM manually"}` });
+      }
+    } catch {
+      setFetchMsg({ ok: false, text: "Network error" });
+    }
+    setFetching(false);
+  };
 
   const players = getPlayersForMatch(match.team1, match.team2);
   const filtered = players.filter(p => p.name.toLowerCase().includes(search.toLowerCase()) || p.team.toLowerCase().includes(search.toLowerCase()));
@@ -40,6 +63,19 @@ export default function ResultForm({ match }: { match: MatchWithResult }) {
       <h3 className="font-black text-lg text-white mb-4">
         {match.team1Flag} {match.team1} vs {match.team2} {match.team2Flag}
       </h3>
+
+      {/* ESPN auto-fetch */}
+      <button type="button" onClick={fetchFromESPN} disabled={fetching}
+        className="w-full mb-4 py-2.5 rounded-xl font-bold text-sm flex items-center justify-center gap-2 transition-all"
+        style={{background:"rgba(59,130,246,0.15)",border:"1px solid rgba(59,130,246,0.3)",color:"#60a5fa"}}>
+        {fetching ? "⏳ Fetching from ESPN..." : "🔄 Auto-fill from ESPN"}
+      </button>
+
+      {fetchMsg && (
+        <div className={`mb-4 px-4 py-3 rounded-xl text-sm ${fetchMsg.ok ? "bg-emerald-500/15 border border-emerald-500/30 text-emerald-400" : "bg-red-500/15 border border-red-500/30 text-red-400"}`}>
+          {fetchMsg.text}
+        </div>
+      )}
 
       {success && (
         <div className="bg-emerald-500/15 border border-emerald-500/30 text-emerald-400 px-4 py-3 rounded-xl text-sm mb-4 text-center">
