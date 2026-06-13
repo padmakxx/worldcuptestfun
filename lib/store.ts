@@ -23,13 +23,16 @@ async function blobGet<T>(key: string): Promise<T | null> {
 }
 
 async function blobSet(key: string, value: unknown): Promise<void> {
-  const { put } = await import("@vercel/blob");
+  const { put, list, del } = await import("@vercel/blob");
   const pathname = BLOB_PREFIX + key.replace(/[:/]/g, "_") + ".json";
+  // Delete existing blob first — new put gets a fresh URL, bypassing any CDN cache
+  const { blobs } = await list({ prefix: pathname });
+  const existing = blobs.filter(b => b.pathname === pathname);
+  if (existing.length > 0) await del(existing.map(b => b.url));
   await put(pathname, JSON.stringify(value), {
     access: "public",
     contentType: "application/json",
-    allowOverwrite: true,
-    cacheControlMaxAge: 0, // never cache — data changes frequently
+    addRandomSuffix: false,
   });
 }
 
