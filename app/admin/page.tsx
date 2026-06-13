@@ -2,6 +2,8 @@ import { getSession, getAllUsers } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import { MATCHES } from "@/lib/data/matches";
 import { kget } from "@/lib/store";
+import { getPrediction } from "@/lib/scoring";
+import { isMatchInPredictionWindow } from "@/lib/prediction-window";
 import Link from "next/link";
 
 export default async function AdminPage() {
@@ -24,6 +26,23 @@ export default async function AdminPage() {
   const todayMatches = enriched.filter(m => m.date === today);
   const recentCompleted = enriched.filter(m => m.status === "completed").slice(-5).reverse();
   const upcomingToday = enriched.filter(m => m.status !== "completed" && m.date <= today);
+
+  // Prediction tracker: open-window matches + who has/hasn't predicted
+  const windowMatches = MATCHES.filter(m => isMatchInPredictionWindow(m.date) && m.status !== "completed");
+  const predTracker = await Promise.all(
+    windowMatches.slice(0, 10).map(async m => {
+      const override = await kget<{ status: string }>(`match_status:${m.id}`);
+      if (override?.status === "completed") return null;
+      const statuses = await Promise.all(
+        approvedUsers.map(async u => ({
+          userId: u.id,
+          nickname: u.nickname,
+          predicted: !!(await getPrediction(u.id, m.id)),
+        }))
+      );
+      return { match: m, statuses };
+    })
+  ).then(r => r.filter(Boolean)) as { match: typeof MATCHES[0]; statuses: { userId: string; nickname: string; predicted: boolean }[] }[];
 
   return (
     <div className="min-h-screen">
@@ -132,6 +151,54 @@ export default async function AdminPage() {
             })}
           </div>
         </section>
+
+        {/* Prediction Tracker */}
+        {predTracker.length > 0 && (
+          <section className="mb-8">
+            <h2 className="text-xl font-bold text-white mb-4">🔮 Prediction Tracker</h2>
+            <div className="space-y-4">
+              {predTracker.map(({ match: m, statuses }) => {
+                const predicted = statuses.filter(s => s.predicted);
+                const missing = statuses.filter(s => !s.predicted);
+                return (
+                  <div key={m.id} className="card-glow rounded-2xl p-5">
+                    <div className="flex items-center justify-between mb-3 flex-wrap gap-2">
+                      <div>
+                        <div className="flex items-center gap-2 text-xs text-gray-400 mb-1">
+                          <span className="bg-yellow-400/20 text-yellow-400 px-2 py-0.5 rounded-full font-bold">Group {m.group}</span>
+                          <span>{new Date(m.date + "T12:00:00").toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" })}</span>
+                          <span>{m.time}</span>
+                        </div>
+                        <div className="font-bold text-white">{m.team1Flag} {m.team1} vs {m.team2} {m.team2Flag}</div>
+                      </div>
+                      <div className="text-sm font-bold">
+                        <span className="text-emerald-400">{predicted.length}</span>
+                        <span className="text-gray-600"> / </span>
+                        <span className="text-gray-300">{statuses.length} predicted</span>
+                      </div>
+                    </div>
+                    {/* Progress bar */}
+                    <div className="w-full h-1.5 bg-gray-800 rounded-full mb-3 overflow-hidden">
+                      <div className="h-full bg-emerald-500 rounded-full transition-all" style={{ width: statuses.length ? `${(predicted.length / statuses.length) * 100}%` : "0%" }} />
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                      {statuses.map(s => (
+                        <span key={s.userId} className={`text-xs px-2.5 py-1 rounded-full font-semibold ${s.predicted ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/30" : "bg-red-500/10 text-red-400 border border-red-500/20"}`}>
+                          {s.predicted ? "✅" : "⏳"} {s.nickname}
+                        </span>
+                      ))}
+                    </div>
+                    {missing.length > 0 && (
+                      <div className="mt-2 text-xs text-gray-500">
+                        Not yet: {missing.map(s => s.nickname).join(", ")}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </section>
+        )}
 
         {/* Active Players */}
         {approvedUsers.length > 0 && (
