@@ -13,8 +13,8 @@ async function blobGet<T>(key: string): Promise<T | null> {
     const { blobs } = await list({ prefix: pathname.replace(/\.json$/, "") });
     const blob = blobs.find(b => b.pathname === pathname);
     if (!blob) return null;
-    if (!blob) return null;
-    const res = await fetch(`${blob.url}?t=${Date.now()}`, { cache: "no-store" });
+    // downloadUrl bypasses CDN cache — always returns fresh content
+    const res = await fetch(blob.downloadUrl, { cache: "no-store" });
     if (!res.ok) return null;
     return await res.json() as T;
   } catch {
@@ -40,7 +40,7 @@ async function blobGetAll<T>(prefix: string): Promise<Record<string, T>> {
   const result: Record<string, T> = {};
   await Promise.all(blobs.map(async blob => {
     try {
-      const res = await fetch(`${blob.url}?t=${Date.now()}`, { cache: "no-store" });
+      const res = await fetch(blob.downloadUrl, { cache: "no-store" });
       if (!res.ok) return;
       const val = await res.json() as T;
       // Restore original key format from pathname
