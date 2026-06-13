@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { getSession } from "@/lib/auth";
 import { savePrediction, getPrediction, Prediction } from "@/lib/scoring";
 import { MATCHES } from "@/lib/data/matches";
+import { isMatchInPredictionWindow } from "@/lib/prediction-window";
+import { kget } from "@/lib/store";
 
 export async function POST(req: NextRequest) {
   const session = await getSession();
@@ -12,7 +14,24 @@ export async function POST(req: NextRequest) {
 
   const match = MATCHES.find(m => m.id === matchId);
   if (!match) return NextResponse.json({ error: "Match not found" }, { status: 404 });
-  if (match.status === "completed") return NextResponse.json({ error: "Match already completed" }, { status: 400 });
+
+  // Check if completed (including overrides)
+  const override = await kget<{ status: string }>(`match_status:${matchId}`);
+  const status = override?.status ?? match.status;
+  if (status === "completed") {
+    return NextResponse.json({ error: "Match already completed — predictions closed" }, { status: 400 });
+  }
+
+  // Enforce 2-day prediction window
+  if (!isMatchInPredictionWindow(match.date)) {
+    return NextResponse.json({ error: "This match is not yet open for predictions. Check back closer to the date!" }, { status: 400 });
+  }
+
+  // HARD LOCK: no editing once submitted
+  const existing = await getPrediction(session.userId, matchId);
+  if (existing) {
+    return NextResponse.json({ error: "Prediction already locked! No edits allowed once submitted." }, { status: 409 });
+  }
 
   const pred: Prediction = {
     userId: session.userId,

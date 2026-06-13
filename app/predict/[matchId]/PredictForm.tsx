@@ -6,19 +6,17 @@ import { Match } from "@/lib/data/matches";
 import dynamic from "next/dynamic";
 const LineupPanel = dynamic(() => import("@/components/LineupPanel"), { ssr: false });
 import { Player } from "@/lib/data/players";
-import { Prediction } from "@/lib/scoring";
 
 interface Props {
   match: Match & { result?: { team1Score: number; team2Score: number; motm?: string; firstScorer?: string } };
   players: Player[];
-  existing?: Prediction;
 }
 
-export default function PredictForm({ match, players, existing }: Props) {
-  const [score1, setScore1] = useState(existing?.team1Score?.toString() ?? "");
-  const [score2, setScore2] = useState(existing?.team2Score?.toString() ?? "");
-  const [motm, setMotm] = useState(existing?.motm ?? "");
-  const [firstScorer, setFirstScorer] = useState(existing?.firstScorer ?? "");
+export default function PredictForm({ match, players }: Props) {
+  const [score1, setScore1] = useState("");
+  const [score2, setScore2] = useState("");
+  const [motm, setMotm] = useState("");
+  const [firstScorer, setFirstScorer] = useState("");
   const [playerSearch, setPlayerSearch] = useState("");
   const [firstSearch, setFirstSearch] = useState("");
   const [loading, setLoading] = useState(false);
@@ -276,7 +274,7 @@ export default function PredictForm({ match, players, existing }: Props) {
           )}
 
           <button type="submit" disabled={loading} className="btn-gold w-full py-4 rounded-2xl text-lg font-black">
-            {loading ? "Saving..." : existing ? "✏️ Update Prediction" : "⚡ Lock In Prediction"}
+            {loading ? "Locking in..." : "⚡ Lock In Prediction — Final!"}
           </button>
         </form>
       </div>
