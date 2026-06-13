@@ -16,6 +16,9 @@ export interface User {
   approved: boolean;
   isAdmin: boolean;
   createdAt: string;
+  avatar?: string;       // emoji e.g. "🦁"
+  supportedTeam?: string; // team flag emoji e.g. "🇧🇷"
+  avatarColor?: string;  // hex bg color e.g. "#7c3aed"
 }
 
 export interface Session {

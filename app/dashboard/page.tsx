@@ -6,6 +6,7 @@ import { getPrediction } from "@/lib/scoring";
 import { getPredictionWindow, isMatchInPredictionWindow } from "@/lib/prediction-window";
 import Link from "next/link";
 import LiveScoreTicker from "@/components/LiveScoreTicker";
+import Avatar from "@/components/Avatar";
 
 interface MatchWithOverride {
   id: string;
@@ -75,6 +76,9 @@ export default async function Dashboard() {
         <Link href="/dashboard" className="font-black text-xl text-white">⚽ <span className="gold-gradient">WC2026</span></Link>
         <div className="flex items-center gap-3">
           <Link href="/leaderboard" className="text-sm text-gray-300 hover:text-yellow-400 transition-colors px-3 py-1.5 rounded-lg hover:bg-white/5">🏆 Board</Link>
+          <Link href="/profile" className="flex items-center gap-2 hover:opacity-80 transition-opacity">
+            <Avatar nickname={user.nickname} avatar={user.avatar} supportedTeam={user.supportedTeam} avatarColor={user.avatarColor} size="sm" />
+          </Link>
           <form action="/api/auth/logout" method="POST">
             <button type="submit" className="text-xs text-gray-500 hover:text-gray-300 transition-colors px-2 py-1.5 rounded-lg hover:bg-white/5">Logout</button>
           </form>

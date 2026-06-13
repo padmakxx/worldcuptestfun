@@ -1,8 +1,8 @@
-import { getSession } from "@/lib/auth";
-import { getAllUsers } from "@/lib/auth";
+import { getSession, getAllUsers } from "@/lib/auth";
 import { computeLeaderboard, LeaderboardEntry } from "@/lib/scoring";
 import { redirect } from "next/navigation";
 import Link from "next/link";
+import Avatar from "@/components/Avatar";
 
 export default async function LeaderboardPage() {
   const session = await getSession();
@@ -10,10 +10,18 @@ export default async function LeaderboardPage() {
 
   const users = await getAllUsers();
   const eligible = users.filter(u => u.approved);
+  const userMap = Object.fromEntries(eligible.map(u => [u.id, u]));
   const board = await computeLeaderboard(eligible.map(u => ({ id: u.id, username: u.username, nickname: u.nickname })));
+  // Attach avatar fields to board entries
+  const boardWithAvatars = board.map(e => ({
+    ...e,
+    avatar: userMap[e.userId]?.avatar,
+    supportedTeam: userMap[e.userId]?.supportedTeam,
+    avatarColor: userMap[e.userId]?.avatarColor,
+  }));
 
-  const topThree = board.slice(0, 3);
-  const rest = board.slice(3);
+  const topThree = boardWithAvatars.slice(0, 3);
+  const rest = boardWithAvatars.slice(3);
 
   return (
     <div className="min-h-screen pb-16">
@@ -92,7 +100,9 @@ export default async function LeaderboardPage() {
   );
 }
 
-function PodiumDisplay({ entries, currentUserId }: { entries: LeaderboardEntry[]; currentUserId: string }) {
+type BoardEntry = LeaderboardEntry & { avatar?: string; supportedTeam?: string; avatarColor?: string };
+
+function PodiumDisplay({ entries, currentUserId }: { entries: BoardEntry[]; currentUserId: string }) {
   // Reorder for podium: 2nd, 1st, 3rd
   const podiumOrder = entries.length >= 3
     ? [entries[1], entries[0], entries[2]]
@@ -122,22 +132,18 @@ function PodiumDisplay({ entries, currentUserId }: { entries: LeaderboardEntry[]
         return (
           <div key={entry.userId} className={`flex flex-col items-center ${isFirst ? "scale-105" : ""}`} style={{width:"30%"}}>
             {/* Avatar */}
-            <div className={`relative mb-3`}>
+            <div className="relative mb-3">
               {isMe && (
                 <div className="absolute -top-2 -right-2 bg-blue-500 text-white text-xs px-1.5 py-0.5 rounded-full font-bold z-10">You</div>
               )}
-              <div
-                className={`w-16 h-16 rounded-full flex items-center justify-center font-black text-2xl border-4 ${borders[i]} ${glows[i]}`}
-                style={{
-                  background: isFirst
-                    ? "linear-gradient(135deg,#FFD700,#FFA500)"
-                    : i === 0
-                    ? "linear-gradient(135deg,#9CA3AF,#6B7280)"
-                    : "linear-gradient(135deg,#CD7F32,#A0522D)",
-                  color: "#0a0e1a"
-                }}
-              >
-                {entry.nickname[0].toUpperCase()}
+              <div className={`rounded-full border-4 ${borders[i]} ${glows[i]}`}>
+                <Avatar
+                  nickname={entry.nickname}
+                  avatar={entry.avatar}
+                  supportedTeam={entry.supportedTeam}
+                  avatarColor={entry.avatarColor || (isFirst ? "#b45309" : i === 0 ? "#4b5563" : "#92400e")}
+                  size="lg"
+                />
               </div>
             </div>
             <div className="text-2xl">{medals[i]}</div>
@@ -164,7 +170,7 @@ function PodiumDisplay({ entries, currentUserId }: { entries: LeaderboardEntry[]
   );
 }
 
-function LeaderboardRow({ entry, rank, isMe }: { entry: LeaderboardEntry; rank: number; isMe: boolean }) {
+function LeaderboardRow({ entry, rank, isMe }: { entry: BoardEntry; rank: number; isMe: boolean }) {
   const maxPts = 16; // max per prediction
   const barPct = Math.min(100, entry.totalPoints > 0 ? (entry.totalPoints / (rank <= 5 ? 80 : 60)) * 100 : 0);
 
@@ -175,11 +181,7 @@ function LeaderboardRow({ entry, rank, isMe }: { entry: LeaderboardEntry; rank: 
       <div className="flex items-center gap-4">
         <div className="w-8 text-center font-black text-gray-500 text-lg flex-shrink-0">#{rank}</div>
 
-        {/* Avatar */}
-        <div className="w-10 h-10 rounded-full flex items-center justify-center font-black text-sm flex-shrink-0"
-          style={{background:"linear-gradient(135deg,rgba(255,215,0,0.3),rgba(255,215,0,0.1))",border:"1px solid rgba(255,215,0,0.2)"}}>
-          <span className="gold-gradient">{entry.nickname[0].toUpperCase()}</span>
-        </div>
+        <Avatar nickname={entry.nickname} avatar={entry.avatar} supportedTeam={entry.supportedTeam} avatarColor={entry.avatarColor} size="md" />
 
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2">
