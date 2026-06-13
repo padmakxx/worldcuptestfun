@@ -1,61 +1,49 @@
-// Dual-mode store: Vercel Blob in production, file-based JSON in local dev
-// isVercel() checked at runtime so the build-time env var absence doesn't freeze it to false
+// Store: Upstash Redis REST API in production, file-based JSON in local dev
 
-const BLOB_PREFIX = "wc2026/";
-
-function isVercel() {
-  return !!process.env.BLOB_READ_WRITE_TOKEN;
+function isProduction() {
+  return !!process.env.UPSTASH_REDIS_REST_URL;
 }
 
-// ---------- Vercel Blob (production) ----------
-async function blobGet<T>(key: string): Promise<T | null> {
-  const { list } = await import("@vercel/blob");
-  try {
-    const pathname = BLOB_PREFIX + key.replace(/[:/]/g, "_") + ".json";
-    const { blobs } = await list({ prefix: pathname.replace(/\.json$/, "") });
-    const blob = blobs.find(b => b.pathname === pathname);
-    if (!blob) return null;
-    const res = await fetch(blob.url, { cache: "no-store" });
-    if (!res.ok) return null;
-    return await res.json() as T;
-  } catch {
-    return null;
-  }
-}
+const getUpstashUrl = () => process.env.UPSTASH_REDIS_REST_URL!;
+const getUpstashToken = () => process.env.UPSTASH_REDIS_REST_TOKEN!;
 
-async function blobSet(key: string, value: unknown): Promise<void> {
-  const { put } = await import("@vercel/blob");
-  const pathname = BLOB_PREFIX + key.replace(/[:/]/g, "_") + ".json";
-  await put(pathname, JSON.stringify(value), {
-    access: "public",
-    contentType: "application/json",
-    allowOverwrite: true,
-    addRandomSuffix: false,
+async function upstashCmd(command: unknown[]): Promise<unknown> {
+  const res = await fetch(getUpstashUrl(), {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${getUpstashToken()}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(command),
+    cache: "no-store",
   });
+  const data = await res.json() as { result: unknown };
+  return data.result;
 }
 
-async function blobGetAll<T>(prefix: string): Promise<Record<string, T>> {
-  const { list } = await import("@vercel/blob");
-  const safePrefix = BLOB_PREFIX + prefix.replace(/[:/]/g, "_");
-  const { blobs } = await list({ prefix: safePrefix });
+async function kvGet<T>(key: string): Promise<T | null> {
+  const result = await upstashCmd(["GET", key]);
+  if (!result) return null;
+  try { return JSON.parse(result as string) as T; } catch { return result as T; }
+}
+
+async function kvSet(key: string, value: unknown): Promise<void> {
+  await upstashCmd(["SET", key, JSON.stringify(value)]);
+}
+
+async function kvGetAll<T>(prefix: string): Promise<Record<string, T>> {
+  const keys = await upstashCmd(["KEYS", `${prefix}*`]) as string[];
+  if (!keys || keys.length === 0) return {};
   const result: Record<string, T> = {};
-  await Promise.all(blobs.map(async blob => {
-    try {
-      const res = await fetch(blob.url, { cache: "no-store" });
-      if (!res.ok) return;
-      const val = await res.json() as T;
-      const rawKey = blob.pathname.slice(BLOB_PREFIX.length).replace(/\.json$/, "");
-      result[rawKey] = val;
-    } catch { /* skip */ }
+  await Promise.all(keys.map(async k => {
+    const val = await kvGet<T>(k);
+    if (val !== null) result[k] = val;
   }));
   return result;
 }
 
-async function blobDel(key: string): Promise<void> {
-  const { list, del } = await import("@vercel/blob");
-  const pathname = BLOB_PREFIX + key.replace(/[:/]/g, "_") + ".json";
-  const { blobs } = await list({ prefix: pathname });
-  if (blobs.length > 0) await del(blobs.map(b => b.url));
+async function kvDel(key: string): Promise<void> {
+  await upstashCmd(["DEL", key]);
 }
 
 // ---------- File-based JSON (local dev) ----------
@@ -92,16 +80,16 @@ async function fileGetAll<T>(prefix: string): Promise<Record<string, T>> {
 }
 
 export async function kget<T>(key: string): Promise<T | null> {
-  return isVercel() ? blobGet<T>(key) : fileGet<T>(key);
+  return isProduction() ? kvGet<T>(key) : fileGet<T>(key);
 }
 export async function kset(key: string, value: unknown): Promise<void> {
-  return isVercel() ? blobSet(key, value) : fileSet(key, value);
+  return isProduction() ? kvSet(key, value) : fileSet(key, value);
 }
 export async function kgetall<T>(prefix: string): Promise<Record<string, T>> {
-  return isVercel() ? blobGetAll<T>(prefix) : fileGetAll<T>(prefix);
+  return isProduction() ? kvGetAll<T>(prefix) : fileGetAll<T>(prefix);
 }
 export async function kdel(key: string): Promise<void> {
-  return isVercel() ? blobDel(key) : (async () => {
+  return isProduction() ? kvDel(key) : (async () => {
     const f = fp(key);
     if (existsSync(f)) { const { unlinkSync } = await import("fs"); unlinkSync(f); }
   })();
