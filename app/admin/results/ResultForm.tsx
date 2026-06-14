@@ -2,8 +2,35 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Match } from "@/lib/data/matches";
-import { getPlayersForMatch } from "@/lib/data/players";
+import { getPlayersForMatch, Player } from "@/lib/data/players";
 import type { ESPNLineup } from "@/lib/espn";
+
+// Strip accents + lowercase for fuzzy name matching
+function norm(s: string) {
+  return s.trim().toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "");
+}
+
+// Snap an ESPN name to the closest player in our list, or return the original
+function snapToPlayer(espnName: string, players: { name: string }[]): string {
+  if (!espnName) return espnName;
+  const n = norm(espnName);
+  // Exact match after normalizing
+  const exact = players.find(p => norm(p.name) === n);
+  if (exact) return exact.name;
+  // Partial: our name is contained in ESPN name or vice versa
+  const partial = players.find(p => {
+    const pn = norm(p.name);
+    return n.includes(pn) || pn.includes(n);
+  });
+  if (partial) return partial.name;
+  // Token overlap: share at least one significant word (length > 3)
+  const tokens = n.split(/\s+/).filter(t => t.length > 3);
+  const tokenMatch = players.find(p => {
+    const pt = norm(p.name).split(/\s+/);
+    return tokens.some(t => pt.includes(t));
+  });
+  return tokenMatch ? tokenMatch.name : espnName;
+}
 
 interface MatchWithResult extends Match {
   result?: { team1Score: number; team2Score: number; motm?: string; firstScorer?: string };
@@ -41,9 +68,11 @@ export default function ResultForm({ match }: { match: MatchWithResult }) {
       } else {
         setScore1(String(data.team1Score));
         setScore2(String(data.team2Score));
-        if (data.firstScorer) setFirstScorer(data.firstScorer);
-        if (data.motm) setMotm(data.motm);
-        setFetchMsg({ ok: true, text: `Fetched! Score: ${data.team1Score}–${data.team2Score}${data.firstScorer ? ` · 1st scorer: ${data.firstScorer}` : ""}${data.motm ? ` · MOTM: ${data.motm}` : " · Pick MOTM manually"}` });
+        const snappedFirst = data.firstScorer ? snapToPlayer(data.firstScorer, players) : "";
+        const snappedMotm = data.motm ? snapToPlayer(data.motm, players) : "";
+        if (snappedFirst) setFirstScorer(snappedFirst);
+        if (snappedMotm) setMotm(snappedMotm);
+        setFetchMsg({ ok: true, text: `Fetched! Score: ${data.team1Score}–${data.team2Score}${snappedFirst ? ` · 1st scorer: ${snappedFirst}` : ""}${snappedMotm ? ` · MOTM: ${snappedMotm}` : " · Pick MOTM manually"}` });
       }
     } catch {
       setFetchMsg({ ok: false, text: "Network error" });

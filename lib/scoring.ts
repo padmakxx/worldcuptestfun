@@ -37,13 +37,22 @@ function getOutcome(t1: number, t2: number): "home" | "draw" | "away" {
   return "draw";
 }
 
-// Strips accents + lowercases so "Mbappé" == "mbappe", handles ESPN vs static list differences
+// Strips accents + lowercases — handles ESPN vs static list name differences
 function normName(s: string): string {
   return s.trim().toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "");
 }
 
 export function namesMatch(a?: string, b?: string): boolean {
-  return !!a && !!b && normName(a) === normName(b);
+  if (!a || !b) return false;
+  const na = normName(a);
+  const nb = normName(b);
+  if (na === nb) return true;
+  // One name contains the other: "vinicius junior" contains "vinicius jr" tokens
+  if (na.includes(nb) || nb.includes(na)) return true;
+  // Shared significant tokens (length > 3): "vinicius" appears in both
+  const ta = na.split(/\s+/).filter(t => t.length > 3);
+  const tb = new Set(nb.split(/\s+/).filter(t => t.length > 3));
+  return ta.some(t => tb.has(t));
 }
 
 export function calculatePoints(pred: Prediction, result: MatchResult): number {
