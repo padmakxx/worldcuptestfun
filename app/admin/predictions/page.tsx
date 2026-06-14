@@ -83,9 +83,13 @@ export default async function AdminPredictionsPage() {
                     </div>
                     <div className="text-right">
                       <div className="text-3xl font-black text-white">{result.team1Score} – {result.team2Score}</div>
-                      <div className="text-xs text-gray-400 mt-0.5">
-                        {result.motm && <span className="mr-2">⭐ {result.motm}</span>}
-                        {result.firstScorer && <span>🥅 {result.firstScorer}</span>}
+                      <div className="text-xs text-gray-400 mt-0.5 space-y-0.5">
+                        {result.motm
+                          ? <div>⭐ MOTM: <span className="text-purple-300 font-semibold">{result.motm}</span></div>
+                          : <div className="text-gray-600">⭐ MOTM: not set</div>}
+                        {result.firstScorer
+                          ? <div>🥅 1st Scorer: <span className="text-orange-300 font-semibold">{result.firstScorer}</span></div>
+                          : <div className="text-gray-600">🥅 1st Scorer: not set</div>}
                       </div>
                     </div>
                   </div>

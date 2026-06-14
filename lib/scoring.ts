@@ -37,12 +37,12 @@ function getOutcome(t1: number, t2: number): "home" | "draw" | "away" {
   return "draw";
 }
 
-// Strips accents and lowercases so "Mbappé" == "mbappe", handles ESPN vs static list name differences
+// Strips accents + lowercases so "Mbappé" == "mbappe", handles ESPN vs static list differences
 function normName(s: string): string {
   return s.trim().toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "");
 }
 
-export function namesMatch(a: string, b: string): boolean {
+export function namesMatch(a?: string, b?: string): boolean {
   return !!a && !!b && normName(a) === normName(b);
 }
 
