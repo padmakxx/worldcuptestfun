@@ -1,15 +1,20 @@
 "use client";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Match } from "@/lib/data/matches";
 import dynamic from "next/dynamic";
 const LineupPanel = dynamic(() => import("@/components/LineupPanel"), { ssr: false });
 import { Player } from "@/lib/data/players";
+import type { ESPNLineup, ESPNPlayer } from "@/lib/espn";
 
 interface Props {
   match: Match & { result?: { team1Score: number; team2Score: number; motm?: string; firstScorer?: string } };
   players: Player[];
+}
+
+function espnToPlayer(p: ESPNPlayer, flag: string): Player & { flag: string } {
+  return { name: p.name, team: p.team, position: p.position, club: "", isStar: false, flag };
 }
 
 export default function PredictForm({ match, players }: Props) {
@@ -22,11 +27,28 @@ export default function PredictForm({ match, players }: Props) {
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState("");
+  const [lineup, setLineup] = useState<ESPNLineup | null>(null);
   const router = useRouter();
 
-  const team1Players = players.filter(p => p.team === match.team1);
-  const team2Players = players.filter(p => p.team === match.team2);
-  const allPlayers = [...team1Players, ...team2Players];
+  useEffect(() => {
+    fetch(`/api/lineup/${match.id}`)
+      .then(r => r.json())
+      .then(d => { if (d.lineup?.team1?.players?.length > 0) setLineup(d.lineup); })
+      .catch(() => {});
+  }, [match.id]);
+
+  const staticTeam1 = players.filter(p => p.team === match.team1);
+  const staticTeam2 = players.filter(p => p.team === match.team2);
+
+  // Use confirmed lineup players when available, otherwise fall back to static list
+  const allPlayers: (Player & { flag?: string })[] = lineup
+    ? [
+        ...lineup.team1.players.map(p => espnToPlayer(p, match.team1Flag)),
+        ...lineup.team2.players.map(p => espnToPlayer(p, match.team2Flag)),
+      ]
+    : [...staticTeam1, ...staticTeam2];
+
+  const lineupAvailable = !!lineup;
 
   const filteredMotm = allPlayers.filter(p =>
     p.name.toLowerCase().includes(playerSearch.toLowerCase()) ||
@@ -37,6 +59,9 @@ export default function PredictForm({ match, players }: Props) {
     p.name.toLowerCase().includes(firstSearch.toLowerCase()) ||
     p.team.toLowerCase().includes(firstSearch.toLowerCase())
   );
+
+  const playerFlag = (p: Player & { flag?: string }) =>
+    (p as { flag?: string }).flag ?? (p.team === match.team1 ? match.team1Flag : match.team2Flag);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -160,7 +185,10 @@ export default function PredictForm({ match, players }: Props) {
 
           {/* MOTM */}
           <div className="card-glow rounded-3xl p-6">
-            <h3 className="font-black text-lg text-white mb-1">⭐ Man of the Match</h3>
+            <div className="flex items-center gap-2 mb-1">
+              <h3 className="font-black text-lg text-white">⭐ Man of the Match</h3>
+              {lineupAvailable && <span className="text-xs bg-emerald-500/20 text-emerald-400 px-2 py-0.5 rounded-full border border-emerald-500/30">Official lineup</span>}
+            </div>
             <p className="text-sm text-gray-400 mb-4">Who will shine? +3 points if correct</p>
 
             {motm && (
@@ -192,13 +220,13 @@ export default function PredictForm({ match, players }: Props) {
                       : "hover:bg-white/5 text-gray-300"
                   }`}
                 >
-                  <span className="text-lg">{p.team === match.team1 ? match.team1Flag : match.team2Flag}</span>
+                  <span className="text-lg">{playerFlag(p)}</span>
                   <div>
                     <div className="font-semibold flex items-center gap-1">
                       {p.name}
                       {p.isStar && <span className="text-yellow-400 text-xs">⭐</span>}
                     </div>
-                    <div className="text-xs text-gray-500">{p.position} · {p.club}</div>
+                    <div className="text-xs text-gray-500">{p.position}{p.club ? ` · ${p.club}` : ""}</div>
                   </div>
                 </button>
               ))}
@@ -207,7 +235,10 @@ export default function PredictForm({ match, players }: Props) {
 
           {/* First Scorer */}
           <div className="card-glow rounded-3xl p-6">
-            <h3 className="font-black text-lg text-white mb-1">🥅 First Goal Scorer</h3>
+            <div className="flex items-center gap-2 mb-1">
+              <h3 className="font-black text-lg text-white">🥅 First Goal Scorer</h3>
+              {lineupAvailable && <span className="text-xs bg-emerald-500/20 text-emerald-400 px-2 py-0.5 rounded-full border border-emerald-500/30">Official lineup</span>}
+            </div>
             <p className="text-sm text-gray-400 mb-4">Who scores first? +5 points if correct</p>
 
             {firstScorer && (
@@ -239,13 +270,13 @@ export default function PredictForm({ match, players }: Props) {
                       : "hover:bg-white/5 text-gray-300"
                   }`}
                 >
-                  <span className="text-lg">{p.team === match.team1 ? match.team1Flag : match.team2Flag}</span>
+                  <span className="text-lg">{playerFlag(p)}</span>
                   <div>
                     <div className="font-semibold flex items-center gap-1">
                       {p.name}
                       {p.isStar && <span className="text-yellow-400 text-xs">⭐</span>}
                     </div>
-                    <div className="text-xs text-gray-500">{p.position} · {p.club}</div>
+                    <div className="text-xs text-gray-500">{p.position}{p.club ? ` · ${p.club}` : ""}</div>
                   </div>
                 </button>
               ))}
