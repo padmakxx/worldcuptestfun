@@ -51,6 +51,7 @@ export default async function AdminPage() {
         <div className="flex items-center gap-3">
           <Link href="/admin/users" className="text-sm text-gray-300 hover:text-yellow-400 px-3 py-1.5 rounded-lg hover:bg-white/5">👥 Users</Link>
           <Link href="/admin/results" className="text-sm text-gray-300 hover:text-yellow-400 px-3 py-1.5 rounded-lg hover:bg-white/5">⚽ Results</Link>
+          <Link href="/admin/predictions" className="text-sm text-gray-300 hover:text-yellow-400 px-3 py-1.5 rounded-lg hover:bg-white/5">🔮 Predictions</Link>
           <Link href="/leaderboard" className="text-sm text-gray-300 hover:text-yellow-400 px-3 py-1.5 rounded-lg hover:bg-white/5">🏆 Leaderboard</Link>
           <form action="/api/auth/logout" method="POST">
             <button type="submit" className="text-xs text-gray-500 hover:text-gray-300 px-2 py-1.5 rounded-lg hover:bg-white/5">Logout</button>

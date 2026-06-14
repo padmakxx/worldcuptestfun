@@ -98,7 +98,7 @@ export default function LockedPrediction({ match, prediction, players }: Props) 
                 {prediction.motm || <span className="text-gray-500 text-base font-normal">Not predicted</span>}
               </div>
             </div>
-            <div className="ml-auto text-purple-400 font-black">+3 pts</div>
+            <div className="ml-auto text-purple-400 font-black text-sm">if correct +3</div>
           </div>
 
           {/* First scorer */}
@@ -111,7 +111,7 @@ export default function LockedPrediction({ match, prediction, players }: Props) 
                 {prediction.firstScorer || <span className="text-gray-500 text-base font-normal">Not predicted</span>}
               </div>
             </div>
-            <div className="ml-auto text-orange-400 font-black">+5 pts</div>
+            <div className="ml-auto text-orange-400 font-black text-sm">if correct +5</div>
           </div>
         </div>
 
@@ -120,7 +120,7 @@ export default function LockedPrediction({ match, prediction, players }: Props) 
           style={{ background: "rgba(255,215,0,0.05)", border: "1px solid rgba(255,215,0,0.1)" }}>
           <span className="text-gray-400">Up to </span>
           <span className="font-black text-yellow-400 text-xl">
-            {3 + 5 + (prediction.motm ? 3 : 0) + (prediction.firstScorer ? 5 : 0)}
+            {1 + 4 + (prediction.motm ? 3 : 0) + (prediction.firstScorer ? 5 : 0)}
           </span>
           <span className="text-gray-400"> points available for you in this match</span>
         </div>

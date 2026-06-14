@@ -74,8 +74,8 @@ export default async function LeaderboardPage() {
               <h3 className="font-bold text-white mb-4 text-center">📊 How Points Are Earned</h3>
               <div className="grid grid-cols-2 gap-3">
                 {[
-                  { label: "Correct result", sub: "Win / Draw / Loss", pts: "+3", color: "emerald", icon: "✅" },
-                  { label: "Exact scoreline", sub: "Bonus on top of result", pts: "+5", color: "yellow", icon: "🎯" },
+                  { label: "Correct result", sub: "Win / Draw / Loss", pts: "+1", color: "emerald", icon: "✅" },
+                  { label: "Exact scoreline", sub: "Bonus on top of result", pts: "+4", color: "yellow", icon: "🎯" },
                   { label: "Man of the Match", sub: "Your player pick", pts: "+3", color: "purple", icon: "⭐" },
                   { label: "First Goal Scorer", sub: "Who breaks deadlock", pts: "+5", color: "orange", icon: "🥅" },
                 ].map(item => (
@@ -90,7 +90,7 @@ export default async function LeaderboardPage() {
               </div>
               <div className="mt-4 text-center text-sm">
                 <span className="text-gray-400">Perfect match prediction = </span>
-                <span className="font-black text-yellow-400 text-lg">16 points</span>
+                <span className="font-black text-yellow-400 text-lg">13 points</span>
               </div>
             </div>
           </>

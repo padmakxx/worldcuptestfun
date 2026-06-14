@@ -42,8 +42,8 @@ export function calculatePoints(pred: Prediction, result: MatchResult): number {
   const predOutcome = getOutcome(pred.team1Score, pred.team2Score);
   const actualOutcome = getOutcome(result.team1Score, result.team2Score);
 
-  if (predOutcome === actualOutcome) pts += 3;
-  if (pred.team1Score === result.team1Score && pred.team2Score === result.team2Score) pts += 5;
+  if (predOutcome === actualOutcome) pts += 1;
+  if (pred.team1Score === result.team1Score && pred.team2Score === result.team2Score) pts += 4;
   if (pred.motm && result.motm && pred.motm === result.motm) pts += 3;
   if (pred.firstScorer && result.firstScorer && pred.firstScorer === result.firstScorer) pts += 5;
 
@@ -59,7 +59,7 @@ export async function getPrediction(userId: string, matchId: string): Promise<Pr
 }
 
 export async function getUserPredictions(userId: string): Promise<Prediction[]> {
-  const all = await kgetall<Prediction>(`pred_${userId}`);
+  const all = await kgetall<Prediction>(`pred:${userId}:`);
   return Object.values(all);
 }
 
@@ -81,7 +81,7 @@ export async function computeLeaderboard(users: { id: string; username: string; 
     let motmCorrect = 0;
     let firstScorerCorrect = 0;
 
-    const predictions = await kgetall<Prediction>(`pred_${user.id}`);
+    const predictions = await kgetall<Prediction>(`pred:${user.id}:`);
 
     for (const pred of Object.values(predictions)) {
       const result = await getResult(pred.matchId);
