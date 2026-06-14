@@ -37,6 +37,15 @@ function getOutcome(t1: number, t2: number): "home" | "draw" | "away" {
   return "draw";
 }
 
+// Strips accents and lowercases so "Mbappé" == "mbappe", handles ESPN vs static list name differences
+function normName(s: string): string {
+  return s.trim().toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "");
+}
+
+export function namesMatch(a: string, b: string): boolean {
+  return !!a && !!b && normName(a) === normName(b);
+}
+
 export function calculatePoints(pred: Prediction, result: MatchResult): number {
   let pts = 0;
   const predOutcome = getOutcome(pred.team1Score, pred.team2Score);
@@ -44,8 +53,8 @@ export function calculatePoints(pred: Prediction, result: MatchResult): number {
 
   if (predOutcome === actualOutcome) pts += 1;
   if (pred.team1Score === result.team1Score && pred.team2Score === result.team2Score) pts += 4;
-  if (pred.motm && result.motm && pred.motm === result.motm) pts += 3;
-  if (pred.firstScorer && result.firstScorer && pred.firstScorer === result.firstScorer) pts += 5;
+  if (namesMatch(pred.motm, result.motm)) pts += 3;
+  if (namesMatch(pred.firstScorer, result.firstScorer)) pts += 5;
 
   return pts;
 }
@@ -91,8 +100,8 @@ export async function computeLeaderboard(users: { id: string; username: string; 
       const actualOutcome = getOutcome(result.team1Score, result.team2Score);
       if (predOutcome === actualOutcome) correctResults++;
       if (pred.team1Score === result.team1Score && pred.team2Score === result.team2Score) exactScores++;
-      if (pred.motm && result.motm && pred.motm === result.motm) motmCorrect++;
-      if (pred.firstScorer && result.firstScorer && pred.firstScorer === result.firstScorer) firstScorerCorrect++;
+      if (namesMatch(pred.motm, result.motm)) motmCorrect++;
+      if (namesMatch(pred.firstScorer, result.firstScorer)) firstScorerCorrect++;
 
       totalPoints += calculatePoints(pred, result);
     }

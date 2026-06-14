@@ -2,7 +2,7 @@ import { getSession, getAllUsers } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import { MATCHES } from "@/lib/data/matches";
 import { kget, kgetall } from "@/lib/store";
-import { Prediction, MatchResult, calculatePoints } from "@/lib/scoring";
+import { Prediction, MatchResult, calculatePoints, namesMatch } from "@/lib/scoring";
 import Link from "next/link";
 
 export default async function AdminPredictionsPage() {
@@ -119,8 +119,8 @@ export default async function AdminPredictionsPage() {
                         const predOutcome = pred.team1Score > pred.team2Score ? "home" : pred.team2Score > pred.team1Score ? "away" : "draw";
                         const correctResult = predOutcome === outcome;
                         const exactScore = pred.team1Score === result.team1Score && pred.team2Score === result.team2Score;
-                        const correctMotm = !!(pred.motm && result.motm && pred.motm === result.motm);
-                        const correctFirst = !!(pred.firstScorer && result.firstScorer && pred.firstScorer === result.firstScorer);
+                        const correctMotm = namesMatch(pred.motm, result.motm);
+                        const correctFirst = namesMatch(pred.firstScorer, result.firstScorer);
 
                         return (
                           <tr key={user.id} className="hover:bg-white/2 transition-colors">
