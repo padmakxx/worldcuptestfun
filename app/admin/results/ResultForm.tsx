@@ -1,8 +1,9 @@
 "use client";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Match } from "@/lib/data/matches";
 import { getPlayersForMatch } from "@/lib/data/players";
+import type { ESPNLineup } from "@/lib/espn";
 
 interface MatchWithResult extends Match {
   result?: { team1Score: number; team2Score: number; motm?: string; firstScorer?: string };
@@ -19,7 +20,15 @@ export default function ResultForm({ match }: { match: MatchWithResult }) {
   const [fetching, setFetching] = useState(false);
   const [fetchMsg, setFetchMsg] = useState<{ ok: boolean; text: string } | null>(null);
   const [success, setSuccess] = useState(false);
+  const [lineup, setLineup] = useState<ESPNLineup | null>(null);
   const router = useRouter();
+
+  useEffect(() => {
+    fetch(`/api/lineup/${match.id}`, { credentials: "include" })
+      .then(r => r.json())
+      .then(d => { if (d.lineup?.team1?.players?.length > 0) setLineup(d.lineup); })
+      .catch(() => {});
+  }, [match.id]);
 
   const fetchFromESPN = async () => {
     setFetching(true);
@@ -42,7 +51,14 @@ export default function ResultForm({ match }: { match: MatchWithResult }) {
     setFetching(false);
   };
 
-  const players = getPlayersForMatch(match.team1, match.team2);
+  const staticPlayers = getPlayersForMatch(match.team1, match.team2);
+  const players = lineup
+    ? [
+        ...lineup.team1.players.map(p => ({ name: p.name, team: p.team, position: p.position, club: "" as string, isStar: false })),
+        ...lineup.team2.players.map(p => ({ name: p.name, team: p.team, position: p.position, club: "" as string, isStar: false })),
+      ]
+    : staticPlayers;
+
   const filtered = players.filter(p => p.name.toLowerCase().includes(search.toLowerCase()) || p.team.toLowerCase().includes(search.toLowerCase()));
   const filteredFirst = players.filter(p => p.name.toLowerCase().includes(firstSearch.toLowerCase()) || p.team.toLowerCase().includes(firstSearch.toLowerCase()));
 
@@ -104,7 +120,7 @@ export default function ResultForm({ match }: { match: MatchWithResult }) {
 
         {/* MOTM */}
         <div>
-          <label className="block text-sm font-semibold text-gray-300 mb-2">⭐ Man of the Match</label>
+          <label className="block text-sm font-semibold text-gray-300 mb-2">⭐ Man of the Match {lineup && <span className="text-xs bg-emerald-500/20 text-emerald-400 px-2 py-0.5 rounded-full border border-emerald-500/30 ml-1">Official lineup</span>}</label>
           {motm && (
             <div className="mb-2 flex items-center gap-2 bg-purple-500/20 text-purple-300 px-3 py-1.5 rounded-lg text-sm">
               <span>{motm}</span>
@@ -115,7 +131,7 @@ export default function ResultForm({ match }: { match: MatchWithResult }) {
             className="w-full px-3 py-2 rounded-lg text-white placeholder-gray-500 text-sm mb-2"
             style={{background:"rgba(255,255,255,0.06)",border:"1px solid rgba(255,255,255,0.1)"}} />
           <div className="max-h-36 overflow-y-auto space-y-1">
-            {(search ? filtered : players).slice(0, 15).map(p => (
+            {(search ? filtered : players).map(p => (
               <button key={`m-${p.name}`} type="button" onClick={() => { setMotm(p.name); setSearch(""); }}
                 className={`w-full text-left px-3 py-1.5 rounded-lg text-sm transition-all ${motm === p.name ? "bg-purple-500/30 text-purple-200" : "hover:bg-white/5 text-gray-300"}`}>
                 {p.team === match.team1 ? match.team1Flag : match.team2Flag} {p.name} <span className="text-xs text-gray-500">({p.position})</span>
@@ -126,7 +142,7 @@ export default function ResultForm({ match }: { match: MatchWithResult }) {
 
         {/* First scorer */}
         <div>
-          <label className="block text-sm font-semibold text-gray-300 mb-2">🥅 First Goal Scorer</label>
+          <label className="block text-sm font-semibold text-gray-300 mb-2">🥅 First Goal Scorer {lineup && <span className="text-xs bg-emerald-500/20 text-emerald-400 px-2 py-0.5 rounded-full border border-emerald-500/30 ml-1">Official lineup</span>}</label>
           {firstScorer && (
             <div className="mb-2 flex items-center gap-2 bg-orange-500/20 text-orange-300 px-3 py-1.5 rounded-lg text-sm">
               <span>{firstScorer}</span>
@@ -137,7 +153,7 @@ export default function ResultForm({ match }: { match: MatchWithResult }) {
             className="w-full px-3 py-2 rounded-lg text-white placeholder-gray-500 text-sm mb-2"
             style={{background:"rgba(255,255,255,0.06)",border:"1px solid rgba(255,255,255,0.1)"}} />
           <div className="max-h-36 overflow-y-auto space-y-1">
-            {(firstSearch ? filteredFirst : players).slice(0, 15).map(p => (
+            {(firstSearch ? filteredFirst : players).map(p => (
               <button key={`f-${p.name}`} type="button" onClick={() => { setFirstScorer(p.name); setFirstSearch(""); }}
                 className={`w-full text-left px-3 py-1.5 rounded-lg text-sm transition-all ${firstScorer === p.name ? "bg-orange-500/30 text-orange-200" : "hover:bg-white/5 text-gray-300"}`}>
                 {p.team === match.team1 ? match.team1Flag : match.team2Flag} {p.name} <span className="text-xs text-gray-500">({p.position})</span>
