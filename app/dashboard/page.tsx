@@ -75,6 +75,7 @@ export default async function Dashboard() {
       <nav className="sticky top-0 z-50 px-4 py-3 flex items-center justify-between" style={{background:"rgba(10,14,26,0.95)",backdropFilter:"blur(10px)",borderBottom:"1px solid rgba(255,215,0,0.1)"}}>
         <Link href="/dashboard" className="font-black text-xl text-white">⚽ <span className="gold-gradient">WC2026</span></Link>
         <div className="flex items-center gap-3">
+          <Link href="/predictions" className="text-sm text-gray-300 hover:text-yellow-400 transition-colors px-3 py-1.5 rounded-lg hover:bg-white/5">📋 Predictions</Link>
           <Link href="/leaderboard" className="text-sm text-gray-300 hover:text-yellow-400 transition-colors px-3 py-1.5 rounded-lg hover:bg-white/5">🏆 Board</Link>
           <Link href="/profile" className="flex items-center gap-2 hover:opacity-80 transition-opacity">
             <Avatar nickname={user.nickname} avatar={user.avatar} supportedTeam={user.supportedTeam} avatarColor={user.avatarColor} size="sm" />
