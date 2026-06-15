@@ -12,11 +12,27 @@ export default function LoginPage() {
   const router = useRouter();
 
   const handlePinChange = (i: number, val: string) => {
-    if (!/^\d?$/.test(val)) return;
+    const digits = val.replace(/\D/g, "");
+    if (!digits) {
+      const next = [...pin];
+      next[i] = "";
+      setPin(next);
+      return;
+    }
+    if (digits.length > 1) {
+      const next = [...pin];
+      for (let j = 0; j < digits.length && i + j < 6; j++) {
+        next[i + j] = digits[j];
+      }
+      setPin(next);
+      const focusIdx = Math.min(i + digits.length, 5);
+      pinRefs.current[focusIdx]?.focus();
+      return;
+    }
     const next = [...pin];
-    next[i] = val;
+    next[i] = digits;
     setPin(next);
-    if (val && i < 5) pinRefs.current[i + 1]?.focus();
+    if (i < 5) pinRefs.current[i + 1]?.focus();
   };
 
   const handlePinKeyDown = (i: number, e: React.KeyboardEvent) => {

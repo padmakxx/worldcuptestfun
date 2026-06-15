@@ -15,11 +15,29 @@ export default function RegisterPage() {
   const confirmRefs = useRef<(HTMLInputElement | null)[]>([]);
 
   const handlePinChange = (refs: typeof pinRefs, setter: typeof setPin, current: string[], i: number, val: string) => {
-    if (!/^\d?$/.test(val)) return;
+    // Take only the last digit typed (handles autofill / paste of full PIN into first box)
+    const digits = val.replace(/\D/g, "");
+    if (!digits) {
+      const next = [...current];
+      next[i] = "";
+      setter(next);
+      return;
+    }
+    // If multiple digits (paste), fill from current index onwards
+    if (digits.length > 1) {
+      const next = [...current];
+      for (let j = 0; j < digits.length && i + j < 6; j++) {
+        next[i + j] = digits[j];
+      }
+      setter(next);
+      const focusIdx = Math.min(i + digits.length, 5);
+      refs.current[focusIdx]?.focus();
+      return;
+    }
     const next = [...current];
-    next[i] = val;
+    next[i] = digits;
     setter(next);
-    if (val && i < 5) refs.current[i + 1]?.focus();
+    if (i < 5) refs.current[i + 1]?.focus();
   };
 
   const handlePinKeyDown = (refs: typeof pinRefs, current: string[], i: number, e: React.KeyboardEvent) => {
