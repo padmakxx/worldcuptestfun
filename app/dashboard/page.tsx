@@ -3,7 +3,7 @@ import { redirect } from "next/navigation";
 import { MATCHES } from "@/lib/data/matches";
 import { kget } from "@/lib/store";
 import { getPrediction } from "@/lib/scoring";
-import { getPredictionWindow, isMatchInPredictionWindow } from "@/lib/prediction-window";
+import { getPredictionWindow, isMatchInPredictionWindow, minutesUntilClose } from "@/lib/prediction-window";
 import Link from "next/link";
 import LiveScoreTicker from "@/components/LiveScoreTicker";
 import Avatar from "@/components/Avatar";
@@ -59,7 +59,7 @@ export default async function Dashboard() {
 
   const { today, tomorrow } = getPredictionWindow();
   // Prediction window = today + tomorrow
-  const windowMatches = enriched.filter(m => m.status !== "completed" && (m.date === today || m.date === tomorrow));
+  const windowMatches = enriched.filter(m => m.status !== "completed" && isMatchInPredictionWindow(m.date, m.time));
   const completedMatches = enriched.filter(m => m.status === "completed").slice(-6).reverse();
   // Upcoming beyond the window (read-only preview)
   const futureMatches = enriched
@@ -134,7 +134,7 @@ export default async function Dashboard() {
             </h2>
             <div className="space-y-3">
               {windowMatches.map(m => (
-                <MatchCard key={m.id} match={m} pred={predMap[m.id]} inWindow={true} />
+                <MatchCard key={m.id} match={m} pred={predMap[m.id]} inWindow={true} minsLeft={minutesUntilClose(m.date, m.time)} />
               ))}
             </div>
           </section>
@@ -169,10 +169,11 @@ export default async function Dashboard() {
   );
 }
 
-function MatchCard({ match, pred, inWindow }: {
+function MatchCard({ match, pred, inWindow, minsLeft }: {
   match: MatchWithOverride;
   pred: { team1Score: number; team2Score: number; motm: string; firstScorer: string } | null;
   inWindow: boolean;
+  minsLeft?: number | null;
 }) {
   const isCompleted = match.status === "completed";
   const hasPred = !!pred;
@@ -205,6 +206,17 @@ function MatchCard({ match, pred, inWindow }: {
         ⚡ Predict
       </Link>
     );
+    if (minsLeft != null && minsLeft <= 60) {
+      actionBtn = (
+        <div className="flex flex-col items-end gap-1">
+          <Link href={`/predict/${match.id}`}
+            className="btn-gold inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-bold">
+            ⚡ Predict
+          </Link>
+          <span className="text-xs text-red-400 font-semibold">⏰ Closes in {minsLeft}m</span>
+        </div>
+      );
+    }
   }
 
   return (

@@ -22,9 +22,9 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Match already completed — predictions closed" }, { status: 400 });
   }
 
-  // Enforce 2-day prediction window
-  if (!isMatchInPredictionWindow(match.date)) {
-    return NextResponse.json({ error: "This match is not yet open for predictions. Check back closer to the date!" }, { status: 400 });
+  // Enforce 2-day prediction window + 30-min pre-kickoff cutoff
+  if (!isMatchInPredictionWindow(match.date, match.time)) {
+    return NextResponse.json({ error: "Predictions are closed — this match is either too far away or kicks off in less than 30 minutes." }, { status: 400 });
   }
 
   // HARD LOCK: no editing once submitted
