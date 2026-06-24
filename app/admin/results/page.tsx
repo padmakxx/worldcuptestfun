@@ -1,7 +1,7 @@
 import { getSession } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import { MATCHES } from "@/lib/data/matches";
-import { kget } from "@/lib/store";
+import { kgetall } from "@/lib/store";
 import Link from "next/link";
 import ResultForm from "./ResultForm";
 
@@ -15,13 +15,12 @@ export default async function AdminResultsPage({ searchParams }: Props) {
 
   const { match: selectedId } = await searchParams;
 
-  const enriched = await Promise.all(
-    MATCHES.map(async m => {
-      const override = await kget<{ status: string; result?: { team1Score: number; team2Score: number; motm: string; firstScorer: string } }>(`match_status:${m.id}`);
-      if (override) return { ...m, status: override.status as "upcoming" | "live" | "completed", result: override.result };
-      return { ...m };
-    })
-  );
+  const allStatuses = await kgetall<{ status: string; result?: { team1Score: number; team2Score: number; motm: string; firstScorer: string } }>(`match_status:`);
+  const enriched = MATCHES.map(m => {
+    const override = allStatuses[`match_status:${m.id}`] ?? allStatuses[`match_status_${m.id}`] ?? null;
+    if (override) return { ...m, status: override.status as "upcoming" | "live" | "completed", result: override.result };
+    return { ...m };
+  });
 
   const selectedMatch = selectedId ? enriched.find(m => m.id === selectedId) : null;
 

@@ -1,7 +1,7 @@
 import { getSession, getAllUsers } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import { MATCHES } from "@/lib/data/matches";
-import { kget } from "@/lib/store";
+import { kgetall, kmget } from "@/lib/store";
 import { getPrediction } from "@/lib/scoring";
 import { isMatchInPredictionWindow } from "@/lib/prediction-window";
 import Link from "next/link";
@@ -15,12 +15,11 @@ export default async function AdminPage() {
   const pendingUsers = users.filter(u => !u.approved && !u.isAdmin);
   const approvedUsers = users.filter(u => u.approved && !u.isAdmin);
 
-  const enriched = await Promise.all(
-    MATCHES.slice(0, 20).map(async m => {
-      const override = await kget<{ status: string; result?: { team1Score: number; team2Score: number; motm: string; firstScorer: string } }>(`match_status:${m.id}`);
-      return override ? { ...m, status: override.status, result: override.result } : { ...m };
-    })
-  );
+  const allStatuses = await kgetall<{ status: string; result?: { team1Score: number; team2Score: number; motm: string; firstScorer: string } }>(`match_status:`);
+  const enriched = MATCHES.slice(0, 20).map(m => {
+    const override = allStatuses[`match_status:${m.id}`] ?? allStatuses[`match_status_${m.id}`] ?? null;
+    return override ? { ...m, status: override.status, result: override.result } : { ...m };
+  });
 
   const today = new Date().toISOString().split("T")[0];
   const todayMatches = enriched.filter(m => m.date === today);
@@ -31,7 +30,7 @@ export default async function AdminPage() {
   const windowMatches = MATCHES.filter(m => isMatchInPredictionWindow(m.date) && m.status !== "completed");
   const predTracker = await Promise.all(
     windowMatches.slice(0, 10).map(async m => {
-      const override = await kget<{ status: string }>(`match_status:${m.id}`);
+      const override = allStatuses[`match_status:${m.id}`] ?? allStatuses[`match_status_${m.id}`] ?? null;
       if (override?.status === "completed") return null;
       const statuses = await Promise.all(
         approvedUsers.map(async u => ({

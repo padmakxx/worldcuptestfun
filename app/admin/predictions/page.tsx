@@ -1,7 +1,7 @@
 import { getSession, getAllUsers } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import { MATCHES } from "@/lib/data/matches";
-import { kget, kgetall } from "@/lib/store";
+import { kgetall, kmget } from "@/lib/store";
 import { Prediction, MatchResult, calculatePoints, namesMatch } from "@/lib/scoring";
 import Link from "next/link";
 
@@ -13,35 +13,52 @@ export default async function AdminPredictionsPage() {
   const users = await getAllUsers();
   const approvedUsers = users.filter(u => u.approved && !u.isAdmin);
 
-  // Load completed matches with results
-  const completedMatches = await Promise.all(
-    MATCHES.map(async m => {
-      const override = await kget<{ status: string; result?: { team1Score: number; team2Score: number; motm: string; firstScorer: string } }>(`match_status:${m.id}`);
-      if (override?.status !== "completed" || !override.result) return null;
-      const result: MatchResult = {
+  // Bulk-fetch all match statuses and results in 2 calls
+  const [allStatuses, allResults] = await Promise.all([
+    kgetall<{ status: string; result?: { team1Score: number; team2Score: number; motm: string; firstScorer: string } }>(`match_status:`),
+    kgetall<MatchResult>(`result:`),
+  ]);
+
+  const completedMatches = MATCHES
+    .map(m => {
+      const override =
+        allStatuses[`match_status:${m.id}`] ??
+        allStatuses[`match_status_${m.id}`] ??
+        null;
+      if (override?.status !== "completed") return null;
+      const stored =
+        allResults[`result:${m.id}`] ??
+        allResults[`result_${m.id}`] ??
+        null;
+      if (!stored && !override.result) return null;
+      const result: MatchResult = stored ?? {
         matchId: m.id,
-        team1Score: override.result.team1Score,
-        team2Score: override.result.team2Score,
-        motm: override.result.motm ?? "",
-        firstScorer: override.result.firstScorer ?? "",
+        team1Score: override.result!.team1Score,
+        team2Score: override.result!.team2Score,
+        motm: override.result!.motm ?? "",
+        firstScorer: override.result!.firstScorer ?? "",
         settledAt: "",
       };
       return { match: m, result };
     })
-  ).then(r => r.filter(Boolean)) as { match: typeof MATCHES[0]; result: MatchResult }[];
+    .filter(Boolean) as { match: typeof MATCHES[0]; result: MatchResult }[];
 
-  // Load all predictions for each completed match
-  const matchData = await Promise.all(
-    completedMatches.map(async ({ match, result }) => {
-      const preds = await Promise.all(
-        approvedUsers.map(async u => {
-          const pred = await kget<Prediction>(`pred:${u.id}:${match.id}`);
-          return { user: u, pred };
-        })
-      );
-      return { match, result, preds };
-    })
+  // One MGET for all predictions across all completed matches × users
+  const predKeys = completedMatches.flatMap(({ match }) =>
+    approvedUsers.map(u => `pred:${u.id}:${match.id}`)
   );
+  const predValues = await kmget<Prediction>(predKeys);
+  const predMap: Record<string, Prediction | null> = {};
+  predKeys.forEach((k, i) => { predMap[k] = predValues[i]; });
+
+  const matchData = completedMatches.map(({ match, result }) => ({
+    match,
+    result,
+    preds: approvedUsers.map(u => ({
+      user: u,
+      pred: predMap[`pred:${u.id}:${match.id}`] ?? null,
+    })),
+  }));
 
   return (
     <div className="min-h-screen">

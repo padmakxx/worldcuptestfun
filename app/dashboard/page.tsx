@@ -1,8 +1,8 @@
 import { getSession, getUser } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import { MATCHES } from "@/lib/data/matches";
-import { kget } from "@/lib/store";
-import { getPrediction } from "@/lib/scoring";
+import { kgetall, kmget } from "@/lib/store";
+import type { Prediction } from "@/lib/scoring";
 import { getPredictionWindow, isMatchInPredictionWindow, minutesUntilClose } from "@/lib/prediction-window";
 import Link from "next/link";
 import LiveScoreTicker from "@/components/LiveScoreTicker";
@@ -42,20 +42,19 @@ export default async function Dashboard() {
     );
   }
 
-  const enriched: MatchWithOverride[] = await Promise.all(
-    MATCHES.map(async m => {
-      const override = await kget<{ status: string; result?: { team1Score: number; team2Score: number; motm: string; firstScorer: string } }>(`match_status:${m.id}`);
-      if (override) return { ...m, status: override.status, result: override.result };
-      return { ...m };
-    })
-  );
+  const [allStatuses, predValues] = await Promise.all([
+    kgetall<{ status: string; result?: { team1Score: number; team2Score: number; motm: string; firstScorer: string } }>(`match_status:`),
+    kmget<Prediction>(MATCHES.map(m => `pred:${session.userId}:${m.id}`)),
+  ]);
 
-  // Get user predictions for completed/upcoming matches
-  const predictions = await Promise.all(
-    enriched.map(m => getPrediction(session.userId, m.id))
-  );
+  const enriched: MatchWithOverride[] = MATCHES.map(m => {
+    const override = allStatuses[`match_status:${m.id}`] ?? allStatuses[`match_status_${m.id}`] ?? null;
+    if (override) return { ...m, status: override.status, result: override.result };
+    return { ...m };
+  });
+
   const predMap: Record<string, { team1Score: number; team2Score: number; motm: string; firstScorer: string } | null> = {};
-  enriched.forEach((m, i) => { predMap[m.id] = predictions[i] ? { ...predictions[i]! } : null; });
+  MATCHES.forEach((m, i) => { predMap[m.id] = predValues[i] ? { ...predValues[i]! } : null; });
 
   const { today, tomorrow } = getPredictionWindow();
   // Prediction window = today + tomorrow
