@@ -1,10 +1,11 @@
 import { getSession, getUser, getAllUsers } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import { MATCHES } from "@/lib/data/matches";
-import { getPrediction, getResult, calculatePoints, namesMatch } from "@/lib/scoring";
-import { kget } from "@/lib/store";
+import { calculatePoints, namesMatch, getUserPredictions } from "@/lib/scoring";
+import { kgetall } from "@/lib/store";
 import Link from "next/link";
 import Avatar from "@/components/Avatar";
+import type { MatchResult, Prediction } from "@/lib/scoring";
 
 const PAGE_SIZE = 5;
 
@@ -25,51 +26,64 @@ export default async function PredictionsPage({
 
   const allUsers = (await getAllUsers()).filter(u => u.approved && !u.isAdmin);
 
-  // Get all matches with their status (lightweight — no predictions yet)
-  const enriched = await Promise.all(
-    MATCHES.map(async m => {
-      const override = await kget<{ status: string; result?: { team1Score: number; team2Score: number; motm: string; firstScorer: string } }>(`match_status:${m.id}`);
-      const status = override?.status ?? m.status;
-      const result = await getResult(m.id);
-      return { ...m, status, result };
-    })
-  );
+  // Bulk-fetch all match status overrides and results in 2 calls instead of 73×2
+  const [allStatuses, allResults] = await Promise.all([
+    kgetall<{ status: string; result?: MatchResult }>(`match_status:`),
+    kgetall<MatchResult>(`result:`),
+  ]);
+
+  // Build enriched match list purely from in-memory maps — zero extra network calls
+  const enriched = MATCHES.map(m => {
+    const override = allStatuses[`match_status:${m.id}`] ?? allStatuses[`match_status_${m.id}`] ?? null;
+    const status = override?.status ?? m.status;
+    const result = allResults[`result:${m.id}`] ?? allResults[`result_${m.id}`] ?? null;
+    return { ...m, status, result };
+  });
 
   // Newest completed matches first
   const completedMatches = enriched.filter(m => m.status === "completed").reverse();
   const totalPages = Math.max(1, Math.ceil(completedMatches.length / PAGE_SIZE));
   const safePage = Math.min(page, totalPages);
   const pageMatches = completedMatches.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE);
+  const pageMatchIds = new Set(pageMatches.map(m => m.id));
 
-  // Only fetch predictions for the current page of matches
-  const matchData = await Promise.all(
-    pageMatches.map(async match => {
-      const preds = await Promise.all(
-        allUsers.map(async u => {
-          const pred = await getPrediction(u.id, match.id);
-          if (!pred) return null;
-          let points = 0;
-          let breakdown = { result: false, exact: false, motm: false, firstScorer: false };
-          if (match.result) {
-            points = calculatePoints(pred, match.result as Parameters<typeof calculatePoints>[1]);
-            const predOut = pred.team1Score > pred.team2Score ? "home" : pred.team1Score < pred.team2Score ? "away" : "draw";
-            const actOut = match.result.team1Score > match.result.team2Score ? "home" : match.result.team1Score < match.result.team2Score ? "away" : "draw";
-            breakdown = {
-              result: predOut === actOut,
-              exact: pred.team1Score === match.result.team1Score && pred.team2Score === match.result.team2Score,
-              motm: namesMatch(pred.motm, match.result.motm),
-              firstScorer: namesMatch(pred.firstScorer, match.result.firstScorer),
-            };
-          }
-          return { user: u, pred, points, breakdown, isMe: u.id === session.userId };
-        })
-      );
-      return {
-        match,
-        predictions: preds.filter(Boolean) as NonNullable<typeof preds[number]>[],
-      };
+  // Fetch predictions per user (1 bulk call per user) then filter to page matches
+  const userPredMaps = await Promise.all(
+    allUsers.map(async u => {
+      const preds = await getUserPredictions(u.id);
+      const map: Record<string, Prediction> = {};
+      for (const p of preds) {
+        if (pageMatchIds.has(p.matchId)) map[p.matchId] = p;
+      }
+      return { user: u, map };
     })
   );
+
+  // Build match data from in-memory structures
+  const matchData = pageMatches.map(match => {
+    const result = match.result as MatchResult | null;
+    const predictions = userPredMaps
+      .map(({ user: u, map }) => {
+        const pred = map[match.id];
+        if (!pred) return null;
+        let points = 0;
+        let breakdown = { result: false, exact: false, motm: false, firstScorer: false };
+        if (result) {
+          points = calculatePoints(pred, result);
+          const predOut = pred.team1Score > pred.team2Score ? "home" : pred.team1Score < pred.team2Score ? "away" : "draw";
+          const actOut = result.team1Score > result.team2Score ? "home" : result.team1Score < result.team2Score ? "away" : "draw";
+          breakdown = {
+            result: predOut === actOut,
+            exact: pred.team1Score === result.team1Score && pred.team2Score === result.team2Score,
+            motm: namesMatch(pred.motm, result.motm),
+            firstScorer: namesMatch(pred.firstScorer, result.firstScorer),
+          };
+        }
+        return { user: u, pred, points, breakdown, isMe: u.id === session.userId };
+      })
+      .filter((x): x is NonNullable<typeof x> => x !== null);
+    return { match, predictions };
+  });
 
   const dateStr = (d: string) => new Date(d + "T12:00:00").toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" });
 
@@ -147,20 +161,15 @@ export default async function PredictionsPage({
                         .sort((a, b) => b.points - a.points)
                         .map(({ user: u, pred, points, breakdown, isMe }, idx) => (
                           <div key={u.id} className={`px-6 py-4 flex items-center gap-4 ${isMe ? "bg-yellow-400/5" : ""}`}>
-                            {/* Rank */}
                             <div className="w-6 text-center text-sm font-bold text-gray-500 flex-shrink-0">
                               {idx === 0 ? "🥇" : idx === 1 ? "🥈" : idx === 2 ? "🥉" : `${idx + 1}`}
                             </div>
-
-                            {/* User */}
                             <div className="flex items-center gap-2 w-32 flex-shrink-0">
                               <Avatar nickname={u.nickname} avatar={u.avatar} supportedTeam={u.supportedTeam} avatarColor={u.avatarColor} size="sm" />
                               <span className={`text-sm font-bold truncate ${isMe ? "text-yellow-400" : "text-white"}`}>
                                 {u.nickname}{isMe ? " (you)" : ""}
                               </span>
                             </div>
-
-                            {/* Prediction */}
                             <div className="flex-1 flex flex-wrap items-center gap-2 min-w-0">
                               <span className={`px-2.5 py-1 rounded-lg text-sm font-black ${breakdown.exact ? "bg-emerald-500/30 text-emerald-300 border border-emerald-500/40" : breakdown.result ? "bg-blue-500/20 text-blue-300 border border-blue-500/30" : "bg-white/5 text-gray-400 border border-white/10"}`}>
                                 {pred.team1Score}–{pred.team2Score}
@@ -176,8 +185,6 @@ export default async function PredictionsPage({
                                 </span>
                               )}
                             </div>
-
-                            {/* Points */}
                             <div className="flex-shrink-0 text-right">
                               <div className={`text-lg font-black ${points >= 8 ? "text-yellow-400" : points >= 4 ? "text-emerald-400" : points > 0 ? "text-blue-400" : "text-gray-600"}`}>
                                 +{points}
@@ -208,11 +215,7 @@ export default async function PredictionsPage({
                     ← Newer
                   </span>
                 )}
-
-                <span className="text-sm text-gray-400 px-2">
-                  Page {safePage} of {totalPages}
-                </span>
-
+                <span className="text-sm text-gray-400 px-2">Page {safePage} of {totalPages}</span>
                 {safePage < totalPages ? (
                   <Link
                     href={`/predictions?page=${safePage + 1}`}
