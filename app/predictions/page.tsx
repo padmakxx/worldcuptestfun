@@ -1,11 +1,11 @@
 import { getSession, getUser, getAllUsers } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import { MATCHES } from "@/lib/data/matches";
-import { calculatePoints, namesMatch, getUserPredictions } from "@/lib/scoring";
+import { calculatePoints, namesMatch, getPrediction } from "@/lib/scoring";
 import { kgetall } from "@/lib/store";
 import Link from "next/link";
 import Avatar from "@/components/Avatar";
-import type { MatchResult, Prediction } from "@/lib/scoring";
+import type { MatchResult } from "@/lib/scoring";
 
 const PAGE_SIZE = 5;
 
@@ -26,17 +26,23 @@ export default async function PredictionsPage({
 
   const allUsers = (await getAllUsers()).filter(u => u.approved && !u.isAdmin);
 
-  // Bulk-fetch all match status overrides and results in 2 calls instead of 73×2
+  // 2 bulk calls instead of 73×2 individual ones to build the enriched match list
   const [allStatuses, allResults] = await Promise.all([
-    kgetall<{ status: string; result?: MatchResult }>(`match_status:`),
+    kgetall<{ status: string }>(`match_status:`),
     kgetall<MatchResult>(`result:`),
   ]);
 
-  // Build enriched match list purely from in-memory maps — zero extra network calls
   const enriched = MATCHES.map(m => {
-    const override = allStatuses[`match_status:${m.id}`] ?? allStatuses[`match_status_${m.id}`] ?? null;
+    // kgetall keys look like "match_status:N" in Redis and "match_status_N" in file dev
+    const override =
+      allStatuses[`match_status:${m.id}`] ??
+      allStatuses[`match_status_${m.id}`] ??
+      null;
     const status = override?.status ?? m.status;
-    const result = allResults[`result:${m.id}`] ?? allResults[`result_${m.id}`] ?? null;
+    const result =
+      allResults[`result:${m.id}`] ??
+      allResults[`result_${m.id}`] ??
+      null;
     return { ...m, status, result };
   });
 
@@ -45,47 +51,40 @@ export default async function PredictionsPage({
   const totalPages = Math.max(1, Math.ceil(completedMatches.length / PAGE_SIZE));
   const safePage = Math.min(page, totalPages);
   const pageMatches = completedMatches.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE);
-  const pageMatchIds = new Set(pageMatches.map(m => m.id));
 
-  // Fetch predictions per user (1 bulk call per user) then filter to page matches
-  const userPredMaps = await Promise.all(
-    allUsers.map(async u => {
-      const preds = await getUserPredictions(u.id);
-      const map: Record<string, Prediction> = {};
-      for (const p of preds) {
-        if (pageMatchIds.has(p.matchId)) map[p.matchId] = p;
-      }
-      return { user: u, map };
+  // Predictions only for matches on this page: 5 × N_users calls (bounded regardless of total matches)
+  const matchData = await Promise.all(
+    pageMatches.map(async match => {
+      const result = match.result as MatchResult | null;
+      const preds = await Promise.all(
+        allUsers.map(async u => {
+          const pred = await getPrediction(u.id, match.id);
+          if (!pred) return null;
+          let points = 0;
+          let breakdown = { result: false, exact: false, motm: false, firstScorer: false };
+          if (result) {
+            points = calculatePoints(pred, result);
+            const predOut = pred.team1Score > pred.team2Score ? "home" : pred.team1Score < pred.team2Score ? "away" : "draw";
+            const actOut = result.team1Score > result.team2Score ? "home" : result.team1Score < result.team2Score ? "away" : "draw";
+            breakdown = {
+              result: predOut === actOut,
+              exact: pred.team1Score === result.team1Score && pred.team2Score === result.team2Score,
+              motm: namesMatch(pred.motm, result.motm),
+              firstScorer: namesMatch(pred.firstScorer, result.firstScorer),
+            };
+          }
+          return { user: u, pred, points, breakdown, isMe: u.id === session.userId };
+        })
+      );
+      return {
+        match,
+        predictions: preds.filter((x): x is NonNullable<typeof x> => x !== null),
+      };
     })
   );
 
-  // Build match data from in-memory structures
-  const matchData = pageMatches.map(match => {
-    const result = match.result as MatchResult | null;
-    const predictions = userPredMaps
-      .map(({ user: u, map }) => {
-        const pred = map[match.id];
-        if (!pred) return null;
-        let points = 0;
-        let breakdown = { result: false, exact: false, motm: false, firstScorer: false };
-        if (result) {
-          points = calculatePoints(pred, result);
-          const predOut = pred.team1Score > pred.team2Score ? "home" : pred.team1Score < pred.team2Score ? "away" : "draw";
-          const actOut = result.team1Score > result.team2Score ? "home" : result.team1Score < result.team2Score ? "away" : "draw";
-          breakdown = {
-            result: predOut === actOut,
-            exact: pred.team1Score === result.team1Score && pred.team2Score === result.team2Score,
-            motm: namesMatch(pred.motm, result.motm),
-            firstScorer: namesMatch(pred.firstScorer, result.firstScorer),
-          };
-        }
-        return { user: u, pred, points, breakdown, isMe: u.id === session.userId };
-      })
-      .filter((x): x is NonNullable<typeof x> => x !== null);
-    return { match, predictions };
-  });
-
-  const dateStr = (d: string) => new Date(d + "T12:00:00").toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" });
+  const dateStr = (d: string) =>
+    new Date(d + "T12:00:00").toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" });
 
   return (
     <div className="min-h-screen">
