@@ -6,7 +6,13 @@ import { kget } from "@/lib/store";
 import Link from "next/link";
 import Avatar from "@/components/Avatar";
 
-export default async function PredictionsPage() {
+const PAGE_SIZE = 5;
+
+export default async function PredictionsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
+}) {
   const session = await getSession();
   if (!session) redirect("/login");
   if (session.isAdmin) redirect("/admin");
@@ -14,9 +20,12 @@ export default async function PredictionsPage() {
   const user = await getUser(session.userId);
   if (!user?.approved) redirect("/dashboard");
 
+  const params = await searchParams;
+  const page = Math.max(1, parseInt((params.page as string) ?? "1", 10));
+
   const allUsers = (await getAllUsers()).filter(u => u.approved && !u.isAdmin);
 
-  // Get all matches with their status
+  // Get all matches with their status (lightweight — no predictions yet)
   const enriched = await Promise.all(
     MATCHES.map(async m => {
       const override = await kget<{ status: string; result?: { team1Score: number; team2Score: number; motm: string; firstScorer: string } }>(`match_status:${m.id}`);
@@ -26,11 +35,15 @@ export default async function PredictionsPage() {
     })
   );
 
+  // Newest completed matches first
   const completedMatches = enriched.filter(m => m.status === "completed").reverse();
+  const totalPages = Math.max(1, Math.ceil(completedMatches.length / PAGE_SIZE));
+  const safePage = Math.min(page, totalPages);
+  const pageMatches = completedMatches.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE);
 
-  // Build prediction matrix: for each completed match, get all users' predictions
+  // Only fetch predictions for the current page of matches
   const matchData = await Promise.all(
-    completedMatches.map(async match => {
+    pageMatches.map(async match => {
       const preds = await Promise.all(
         allUsers.map(async u => {
           const pred = await getPrediction(u.id, match.id);
@@ -72,9 +85,16 @@ export default async function PredictionsPage() {
       </nav>
 
       <div className="max-w-4xl mx-auto px-4 py-8">
-        <div className="mb-8">
-          <h1 className="text-3xl font-black text-white">📋 <span className="gold-gradient">Predictions</span></h1>
-          <p className="text-gray-400 mt-1">See how everyone predicted completed matches</p>
+        <div className="mb-8 flex items-start justify-between gap-4 flex-wrap">
+          <div>
+            <h1 className="text-3xl font-black text-white">📋 <span className="gold-gradient">Predictions</span></h1>
+            <p className="text-gray-400 mt-1">See how everyone predicted completed matches</p>
+          </div>
+          {completedMatches.length > 0 && (
+            <div className="text-sm text-gray-500 self-end pb-1">
+              {completedMatches.length} completed match{completedMatches.length !== 1 ? "es" : ""}
+            </div>
+          )}
         </div>
 
         {completedMatches.length === 0 ? (
@@ -83,93 +103,132 @@ export default async function PredictionsPage() {
             <p className="text-gray-400 text-lg">No completed matches yet. Check back after the first game!</p>
           </div>
         ) : (
-          <div className="space-y-8">
-            {matchData.map(({ match, predictions }) => (
-              <div key={match.id} className="card-glow rounded-3xl overflow-hidden">
-                {/* Match header */}
-                <div className="px-6 py-5 border-b border-white/5" style={{ background: "rgba(255,215,0,0.03)" }}>
-                  <div className="flex items-center gap-2 text-xs text-gray-400 mb-3">
-                    <span className="bg-yellow-400/20 text-yellow-400 px-2 py-0.5 rounded-full font-bold">Group {match.group}</span>
-                    <span>{dateStr(match.date)}</span>
-                    <span className="text-gray-600">· {match.city}</span>
-                  </div>
-                  <div className="flex items-center justify-between gap-4">
-                    <div className="flex items-center gap-3 flex-1">
-                      <span className="text-3xl">{match.team1Flag}</span>
-                      <span className="font-black text-white text-lg">{match.team1}</span>
+          <>
+            <div className="space-y-8">
+              {matchData.map(({ match, predictions }) => (
+                <div key={match.id} className="card-glow rounded-3xl overflow-hidden">
+                  {/* Match header */}
+                  <div className="px-6 py-5 border-b border-white/5" style={{ background: "rgba(255,215,0,0.03)" }}>
+                    <div className="flex items-center gap-2 text-xs text-gray-400 mb-3">
+                      <span className="bg-yellow-400/20 text-yellow-400 px-2 py-0.5 rounded-full font-bold">Group {match.group}</span>
+                      <span>{dateStr(match.date)}</span>
+                      <span className="text-gray-600">· {match.city}</span>
                     </div>
-                    {match.result && (
-                      <div className="text-center px-4">
-                        <div className="font-black text-2xl text-white">{match.result.team1Score} – {match.result.team2Score}</div>
-                        <div className="text-xs text-gray-500 mt-0.5">Final</div>
-                        {match.result.motm && (
-                          <div className="text-xs text-purple-400 mt-1">⭐ {match.result.motm}</div>
-                        )}
-                        {match.result.firstScorer && (
-                          <div className="text-xs text-orange-400">🥅 {match.result.firstScorer}</div>
-                        )}
+                    <div className="flex items-center justify-between gap-4">
+                      <div className="flex items-center gap-3 flex-1">
+                        <span className="text-3xl">{match.team1Flag}</span>
+                        <span className="font-black text-white text-lg">{match.team1}</span>
                       </div>
-                    )}
-                    <div className="flex items-center gap-3 flex-1 justify-end">
-                      <span className="font-black text-white text-lg">{match.team2}</span>
-                      <span className="text-3xl">{match.team2Flag}</span>
+                      {match.result && (
+                        <div className="text-center px-4">
+                          <div className="font-black text-2xl text-white">{match.result.team1Score} – {match.result.team2Score}</div>
+                          <div className="text-xs text-gray-500 mt-0.5">Final</div>
+                          {match.result.motm && (
+                            <div className="text-xs text-purple-400 mt-1">⭐ {match.result.motm}</div>
+                          )}
+                          {match.result.firstScorer && (
+                            <div className="text-xs text-orange-400">🥅 {match.result.firstScorer}</div>
+                          )}
+                        </div>
+                      )}
+                      <div className="flex items-center gap-3 flex-1 justify-end">
+                        <span className="font-black text-white text-lg">{match.team2}</span>
+                        <span className="text-3xl">{match.team2Flag}</span>
+                      </div>
                     </div>
                   </div>
-                </div>
 
-                {/* Predictions table */}
-                {predictions.length === 0 ? (
-                  <div className="px-6 py-8 text-center text-gray-500 text-sm">No predictions were submitted for this match.</div>
-                ) : (
-                  <div className="divide-y divide-white/5">
-                    {predictions
-                      .sort((a, b) => b.points - a.points)
-                      .map(({ user: u, pred, points, breakdown, isMe }, idx) => (
-                        <div key={u.id} className={`px-6 py-4 flex items-center gap-4 ${isMe ? "bg-yellow-400/5" : ""}`}>
-                          {/* Rank */}
-                          <div className="w-6 text-center text-sm font-bold text-gray-500 flex-shrink-0">
-                            {idx === 0 ? "🥇" : idx === 1 ? "🥈" : idx === 2 ? "🥉" : `${idx + 1}`}
-                          </div>
-
-                          {/* User */}
-                          <div className="flex items-center gap-2 w-32 flex-shrink-0">
-                            <Avatar nickname={u.nickname} avatar={u.avatar} supportedTeam={u.supportedTeam} avatarColor={u.avatarColor} size="sm" />
-                            <span className={`text-sm font-bold truncate ${isMe ? "text-yellow-400" : "text-white"}`}>
-                              {u.nickname}{isMe ? " (you)" : ""}
-                            </span>
-                          </div>
-
-                          {/* Prediction */}
-                          <div className="flex-1 flex flex-wrap items-center gap-2 min-w-0">
-                            <span className={`px-2.5 py-1 rounded-lg text-sm font-black ${breakdown.exact ? "bg-emerald-500/30 text-emerald-300 border border-emerald-500/40" : breakdown.result ? "bg-blue-500/20 text-blue-300 border border-blue-500/30" : "bg-white/5 text-gray-400 border border-white/10"}`}>
-                              {pred.team1Score}–{pred.team2Score}
-                            </span>
-                            {pred.motm && (
-                              <span className={`px-2 py-0.5 rounded-lg text-xs ${breakdown.motm ? "bg-purple-500/30 text-purple-300 border border-purple-500/40" : "bg-white/5 text-gray-500 border border-white/10"}`}>
-                                ⭐ {pred.motm}
-                              </span>
-                            )}
-                            {pred.firstScorer && (
-                              <span className={`px-2 py-0.5 rounded-lg text-xs ${breakdown.firstScorer ? "bg-orange-500/30 text-orange-300 border border-orange-500/40" : "bg-white/5 text-gray-500 border border-white/10"}`}>
-                                🥅 {pred.firstScorer}
-                              </span>
-                            )}
-                          </div>
-
-                          {/* Points */}
-                          <div className="flex-shrink-0 text-right">
-                            <div className={`text-lg font-black ${points >= 8 ? "text-yellow-400" : points >= 4 ? "text-emerald-400" : points > 0 ? "text-blue-400" : "text-gray-600"}`}>
-                              +{points}
+                  {/* Predictions table */}
+                  {predictions.length === 0 ? (
+                    <div className="px-6 py-8 text-center text-gray-500 text-sm">No predictions were submitted for this match.</div>
+                  ) : (
+                    <div className="divide-y divide-white/5">
+                      {predictions
+                        .sort((a, b) => b.points - a.points)
+                        .map(({ user: u, pred, points, breakdown, isMe }, idx) => (
+                          <div key={u.id} className={`px-6 py-4 flex items-center gap-4 ${isMe ? "bg-yellow-400/5" : ""}`}>
+                            {/* Rank */}
+                            <div className="w-6 text-center text-sm font-bold text-gray-500 flex-shrink-0">
+                              {idx === 0 ? "🥇" : idx === 1 ? "🥈" : idx === 2 ? "🥉" : `${idx + 1}`}
                             </div>
-                            <div className="text-xs text-gray-600">pts</div>
+
+                            {/* User */}
+                            <div className="flex items-center gap-2 w-32 flex-shrink-0">
+                              <Avatar nickname={u.nickname} avatar={u.avatar} supportedTeam={u.supportedTeam} avatarColor={u.avatarColor} size="sm" />
+                              <span className={`text-sm font-bold truncate ${isMe ? "text-yellow-400" : "text-white"}`}>
+                                {u.nickname}{isMe ? " (you)" : ""}
+                              </span>
+                            </div>
+
+                            {/* Prediction */}
+                            <div className="flex-1 flex flex-wrap items-center gap-2 min-w-0">
+                              <span className={`px-2.5 py-1 rounded-lg text-sm font-black ${breakdown.exact ? "bg-emerald-500/30 text-emerald-300 border border-emerald-500/40" : breakdown.result ? "bg-blue-500/20 text-blue-300 border border-blue-500/30" : "bg-white/5 text-gray-400 border border-white/10"}`}>
+                                {pred.team1Score}–{pred.team2Score}
+                              </span>
+                              {pred.motm && (
+                                <span className={`px-2 py-0.5 rounded-lg text-xs ${breakdown.motm ? "bg-purple-500/30 text-purple-300 border border-purple-500/40" : "bg-white/5 text-gray-500 border border-white/10"}`}>
+                                  ⭐ {pred.motm}
+                                </span>
+                              )}
+                              {pred.firstScorer && (
+                                <span className={`px-2 py-0.5 rounded-lg text-xs ${breakdown.firstScorer ? "bg-orange-500/30 text-orange-300 border border-orange-500/40" : "bg-white/5 text-gray-500 border border-white/10"}`}>
+                                  🥅 {pred.firstScorer}
+                                </span>
+                              )}
+                            </div>
+
+                            {/* Points */}
+                            <div className="flex-shrink-0 text-right">
+                              <div className={`text-lg font-black ${points >= 8 ? "text-yellow-400" : points >= 4 ? "text-emerald-400" : points > 0 ? "text-blue-400" : "text-gray-600"}`}>
+                                +{points}
+                              </div>
+                              <div className="text-xs text-gray-600">pts</div>
+                            </div>
                           </div>
-                        </div>
-                      ))}
-                  </div>
+                        ))}
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+
+            {/* Pagination */}
+            {totalPages > 1 && (
+              <div className="mt-10 flex items-center justify-center gap-3">
+                {safePage > 1 ? (
+                  <Link
+                    href={`/predictions?page=${safePage - 1}`}
+                    className="px-5 py-2.5 rounded-xl font-bold text-sm text-white transition-all"
+                    style={{ background: "rgba(255,255,255,0.08)", border: "1px solid rgba(255,255,255,0.12)" }}
+                  >
+                    ← Newer
+                  </Link>
+                ) : (
+                  <span className="px-5 py-2.5 rounded-xl font-bold text-sm text-gray-700 cursor-not-allowed" style={{ border: "1px solid rgba(255,255,255,0.05)" }}>
+                    ← Newer
+                  </span>
+                )}
+
+                <span className="text-sm text-gray-400 px-2">
+                  Page {safePage} of {totalPages}
+                </span>
+
+                {safePage < totalPages ? (
+                  <Link
+                    href={`/predictions?page=${safePage + 1}`}
+                    className="px-5 py-2.5 rounded-xl font-bold text-sm text-white transition-all"
+                    style={{ background: "rgba(255,255,255,0.08)", border: "1px solid rgba(255,255,255,0.12)" }}
+                  >
+                    Older →
+                  </Link>
+                ) : (
+                  <span className="px-5 py-2.5 rounded-xl font-bold text-sm text-gray-700 cursor-not-allowed" style={{ border: "1px solid rgba(255,255,255,0.05)" }}>
+                    Older →
+                  </span>
                 )}
               </div>
-            ))}
-          </div>
+            )}
+          </>
         )}
       </div>
     </div>
