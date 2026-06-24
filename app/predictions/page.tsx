@@ -1,11 +1,13 @@
 import { getSession, getUser, getAllUsers } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import { MATCHES } from "@/lib/data/matches";
-import { calculatePoints, namesMatch, getPrediction } from "@/lib/scoring";
-import { kgetall } from "@/lib/store";
+import { calculatePoints, namesMatch } from "@/lib/scoring";
+import { kgetall, kmget } from "@/lib/store";
+import type { Prediction } from "@/lib/scoring";
 import Link from "next/link";
 import Avatar from "@/components/Avatar";
 import type { MatchResult } from "@/lib/scoring";
+
 
 const PAGE_SIZE = 5;
 
@@ -52,36 +54,37 @@ export default async function PredictionsPage({
   const safePage = Math.min(page, totalPages);
   const pageMatches = completedMatches.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE);
 
-  // Predictions only for matches on this page: 5 × N_users calls (bounded regardless of total matches)
-  const matchData = await Promise.all(
-    pageMatches.map(async match => {
-      const result = match.result as MatchResult | null;
-      const preds = await Promise.all(
-        allUsers.map(async u => {
-          const pred = await getPrediction(u.id, match.id);
-          if (!pred) return null;
-          let points = 0;
-          let breakdown = { result: false, exact: false, motm: false, firstScorer: false };
-          if (result) {
-            points = calculatePoints(pred, result);
-            const predOut = pred.team1Score > pred.team2Score ? "home" : pred.team1Score < pred.team2Score ? "away" : "draw";
-            const actOut = result.team1Score > result.team2Score ? "home" : result.team1Score < result.team2Score ? "away" : "draw";
-            breakdown = {
-              result: predOut === actOut,
-              exact: pred.team1Score === result.team1Score && pred.team2Score === result.team2Score,
-              motm: namesMatch(pred.motm, result.motm),
-              firstScorer: namesMatch(pred.firstScorer, result.firstScorer),
-            };
-          }
-          return { user: u, pred, points, breakdown, isMe: u.id === session.userId };
-        })
-      );
-      return {
-        match,
-        predictions: preds.filter((x): x is NonNullable<typeof x> => x !== null),
-      };
-    })
-  );
+  // One MGET for ALL predictions on this page: 5 × N_users keys in a single round-trip
+  const predKeys = pageMatches.flatMap(m => allUsers.map(u => `pred:${u.id}:${m.id}`));
+  const predValues = await kmget<Prediction>(predKeys);
+  // Index by key for fast lookup
+  const predMap: Record<string, Prediction> = {};
+  predKeys.forEach((k, i) => { if (predValues[i]) predMap[k] = predValues[i]!; });
+
+  const matchData = pageMatches.map(match => {
+    const result = match.result as MatchResult | null;
+    const predictions = allUsers
+      .map(u => {
+        const pred = predMap[`pred:${u.id}:${match.id}`];
+        if (!pred) return null;
+        let points = 0;
+        let breakdown = { result: false, exact: false, motm: false, firstScorer: false };
+        if (result) {
+          points = calculatePoints(pred, result);
+          const predOut = pred.team1Score > pred.team2Score ? "home" : pred.team1Score < pred.team2Score ? "away" : "draw";
+          const actOut = result.team1Score > result.team2Score ? "home" : result.team1Score < result.team2Score ? "away" : "draw";
+          breakdown = {
+            result: predOut === actOut,
+            exact: pred.team1Score === result.team1Score && pred.team2Score === result.team2Score,
+            motm: namesMatch(pred.motm, result.motm),
+            firstScorer: namesMatch(pred.firstScorer, result.firstScorer),
+          };
+        }
+        return { user: u, pred, points, breakdown, isMe: u.id === session.userId };
+      })
+      .filter((x): x is NonNullable<typeof x> => x !== null);
+    return { match, predictions };
+  });
 
   const dateStr = (d: string) =>
     new Date(d + "T12:00:00").toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" });

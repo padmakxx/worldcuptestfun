@@ -34,12 +34,25 @@ async function kvSet(key: string, value: unknown): Promise<void> {
 async function kvGetAll<T>(prefix: string): Promise<Record<string, T>> {
   const keys = await upstashCmd(["KEYS", `${prefix}*`]) as string[];
   if (!keys || keys.length === 0) return {};
+  // MGET fetches all values in one round-trip instead of N individual GETs
+  const values = await upstashCmd(["MGET", ...keys]) as (string | null)[];
   const result: Record<string, T> = {};
-  await Promise.all(keys.map(async k => {
-    const val = await kvGet<T>(k);
-    if (val !== null) result[k] = val;
-  }));
+  keys.forEach((k, i) => {
+    const val = values[i];
+    if (val != null) {
+      try { result[k] = JSON.parse(val) as T; } catch { result[k] = val as unknown as T; }
+    }
+  });
   return result;
+}
+
+async function kvMget<T>(keys: string[]): Promise<(T | null)[]> {
+  if (keys.length === 0) return [];
+  const values = await upstashCmd(["MGET", ...keys]) as (string | null)[];
+  return values.map(v => {
+    if (v == null) return null;
+    try { return JSON.parse(v) as T; } catch { return v as unknown as T; }
+  });
 }
 
 async function kvDel(key: string): Promise<void> {
@@ -79,6 +92,10 @@ async function fileGetAll<T>(prefix: string): Promise<Record<string, T>> {
   return result;
 }
 
+async function fileMget<T>(keys: string[]): Promise<(T | null)[]> {
+  return Promise.all(keys.map(k => fileGet<T>(k)));
+}
+
 export async function kget<T>(key: string): Promise<T | null> {
   return isProduction() ? kvGet<T>(key) : fileGet<T>(key);
 }
@@ -88,6 +105,10 @@ export async function kset(key: string, value: unknown): Promise<void> {
 export async function kgetall<T>(prefix: string): Promise<Record<string, T>> {
   return isProduction() ? kvGetAll<T>(prefix) : fileGetAll<T>(prefix);
 }
+export async function kmget<T>(keys: string[]): Promise<(T | null)[]> {
+  return isProduction() ? kvMget<T>(keys) : fileMget<T>(keys);
+}
+
 export async function kdel(key: string): Promise<void> {
   return isProduction() ? kvDel(key) : (async () => {
     const f = fp(key);
