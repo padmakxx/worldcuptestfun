@@ -52,7 +52,14 @@ export function namesMatch(a?: string, b?: string): boolean {
   // Shared significant tokens (length > 3): "vinicius" appears in both
   const ta = na.split(/\s+/).filter(t => t.length > 3);
   const tb = new Set(nb.split(/\s+/).filter(t => t.length > 3));
-  return ta.some(t => tb.has(t));
+  if (ta.some(t => tb.has(t))) return true;
+  // Prefix/abbreviation matching: "jr" is a prefix of "junior"; "v." initial matches "vinicius"
+  // Handles "V. Júnior" (ESPN) vs "Vinícius Jr" (user prediction)
+  const ta2 = na.replace(/\./g, "").split(/\s+/).filter(t => t.length > 0);
+  const tb2 = nb.replace(/\./g, "").split(/\s+/).filter(t => t.length > 0);
+  return ta2.some(t => tb2.some(u =>
+    (t.length >= 2 && u.startsWith(t)) || (u.length >= 2 && t.startsWith(u))
+  ));
 }
 
 export function calculatePoints(pred: Prediction, result: MatchResult): number {
