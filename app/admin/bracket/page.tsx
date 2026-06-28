@@ -5,7 +5,7 @@ import { kgetall } from "@/lib/store";
 import Link from "next/link";
 import BracketEditor from "./BracketEditor";
 
-const ROUNDS = ["R32", "R16", "QF", "SF", "3PL", "F"];
+const ROUNDS = ["R32", "R16", "QF", "SF", "3PL", "FIN"];
 
 export default async function AdminBracketPage() {
   const session = await getSession();

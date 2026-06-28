@@ -216,20 +216,20 @@ export const MATCHES: Match[] = [
   { id: "m103", matchNumber: 103, date: "2026-07-18", time: "5:00 PM ET", group: "3PL", team1: "TBD", team2: "TBD", team1Flag: "🥉", team2Flag: "🥉", venue: "Hard Rock Stadium", city: "Miami", status: "upcoming", team1Qualifier: "Loser of Match 101", team2Qualifier: "Loser of Match 102" },
 
   // ── FINAL ──
-  { id: "m104", matchNumber: 104, date: "2026-07-19", time: "3:00 PM ET", group: "F", team1: "TBD", team2: "TBD", team1Flag: "🏆", team2Flag: "🏆", venue: "MetLife Stadium", city: "East Rutherford", status: "upcoming", team1Qualifier: "Winner of Match 101", team2Qualifier: "Winner of Match 102" },
+  { id: "m104", matchNumber: 104, date: "2026-07-19", time: "3:00 PM ET", group: "FIN", team1: "TBD", team2: "TBD", team1Flag: "🏆", team2Flag: "🏆", venue: "MetLife Stadium", city: "East Rutherford", status: "upcoming", team1Qualifier: "Winner of Match 101", team2Qualifier: "Winner of Match 102" },
 ];
 
 export function getStageLabel(group: string): string {
   const map: Record<string, string> = {
     R32: "Round of 32", R16: "Round of 16",
     QF: "Quarter-final", SF: "Semi-final",
-    "3PL": "3rd Place", F: "Final",
+    "3PL": "3rd Place", FIN: "Final",
   };
   return map[group] ?? `Group ${group}`;
 }
 
 export function isKnockout(group: string): boolean {
-  return ["R32", "R16", "QF", "SF", "3PL", "F"].includes(group);
+  return ["R32", "R16", "QF", "SF", "3PL", "FIN"].includes(group);
 }
 
 export const GROUPS: Record<string, string[]> = {
