@@ -138,12 +138,13 @@ export default async function Home() {
           <div className="text-xs font-bold tracking-widest text-yellow-500 uppercase mb-3">How It Works</div>
           <h2 className="text-3xl md:text-4xl font-black text-white">Every Correct Call = Points</h2>
         </div>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
           {[
-            { pts:"+3", label:"Correct Result", sub:"Win / Draw / Loss", icon:"✅", color:"#10b981" },
-            { pts:"+5", label:"Exact Score",    sub:"Bonus on top!",     icon:"🎯", color:"#FFD700" },
-            { pts:"+3", label:"Man of Match",   sub:"Your star pick",    icon:"⭐", color:"#a78bfa" },
-            { pts:"+5", label:"First Scorer",   sub:"Who scores first",  icon:"🥅", color:"#fb923c" },
+            { pts:"+3",  label:"Correct Result",    sub:"Win / Draw / Loss",    icon:"✅", color:"#10b981" },
+            { pts:"+11", label:"Exact Score",        sub:"+3 result +8 bonus",   icon:"🎯", color:"#FFD700" },
+            { pts:"+5",  label:"Man of Match",       sub:"Your star pick",        icon:"⭐", color:"#a78bfa" },
+            { pts:"+10", label:"First Scorer",       sub:"Who scores first",      icon:"🥅", color:"#fb923c" },
+            { pts:"+2",  label:"Both Teams Score",   sub:"BTTS bonus",            icon:"⚽", color:"#22d3ee" },
           ].map(({ pts, label, sub, icon, color }) => (
             <div key={label} className="card-glow rounded-2xl p-6 text-center group hover:scale-105 transition-transform">
               <div className="text-3xl mb-3">{icon}</div>
@@ -155,7 +156,7 @@ export default async function Home() {
         </div>
         <div className="text-center mt-6">
           <span className="text-gray-500 text-sm">Perfect match prediction = </span>
-          <span className="font-black text-yellow-400 text-lg">16 points max</span>
+          <span className="font-black text-yellow-400 text-lg">28 points max</span>
         </div>
       </section>
 
@@ -229,7 +230,7 @@ export default async function Home() {
       </section>
 
       <footer className="py-8 text-center text-gray-700 text-xs">
-        ⚽ WC2026 Predictor · Group Stage: Jun 11 – Jun 27 · Final: Jul 19, 2026
+        ⚽ WC2026 Predictor · Group Stage: Jun 11 – Jun 27 · Knockouts: Jun 28 – Jul 19 · Final: Jul 19, 2026
       </footer>
     </div>
   );

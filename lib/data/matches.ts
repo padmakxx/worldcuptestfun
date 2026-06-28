@@ -3,11 +3,13 @@ export interface Match {
   matchNumber: number;
   date: string; // ISO date string
   time: string; // local time string for display
-  group: string;
+  group: string; // "A"-"L" for group stage; "R32"/"R16"/"QF"/"SF"/"3PL"/"F" for knockout
   team1: string;
   team2: string;
   team1Flag: string;
   team2Flag: string;
+  team1Qualifier?: string; // e.g. "Winner of Match 73" for TBD knockout slots
+  team2Qualifier?: string;
   venue: string;
   city: string;
   status: "upcoming" | "live" | "completed";
@@ -161,7 +163,74 @@ export const MATCHES: Match[] = [
   { id: "m70", matchNumber: 70, date: "2026-06-27", time: "7:30 PM ET", group: "K", team1: "DR Congo", team2: "Uzbekistan", team1Flag: "🇨🇩", team2Flag: "🇺🇿", venue: "Mercedes-Benz Stadium", city: "Atlanta", status: "upcoming" },
   { id: "m71", matchNumber: 71, date: "2026-06-27", time: "9:00 PM CDT", group: "J", team1: "Algeria", team2: "Austria", team1Flag: "🇩🇿", team2Flag: "🇦🇹", venue: "Arrowhead Stadium", city: "Kansas City", status: "upcoming" },
   { id: "m72", matchNumber: 72, date: "2026-06-27", time: "9:00 PM CDT", group: "J", team1: "Jordan", team2: "Argentina", team1Flag: "🇯🇴", team2Flag: "🇦🇷", venue: "AT&T Stadium", city: "Dallas", status: "upcoming" },
+
+  // ── ROUND OF 32 ──
+  // June 28
+  { id: "m73", matchNumber: 73, date: "2026-06-28", time: "3:00 PM ET", group: "R32", team1: "South Africa", team2: "Canada", team1Flag: "🇿🇦", team2Flag: "🇨🇦", venue: "SoFi Stadium", city: "Inglewood", status: "upcoming" },
+  // June 29
+  { id: "m76", matchNumber: 76, date: "2026-06-29", time: "1:00 PM ET", group: "R32", team1: "Brazil", team2: "Japan", team1Flag: "🇧🇷", team2Flag: "🇯🇵", venue: "NRG Stadium", city: "Houston", status: "upcoming" },
+  { id: "m74", matchNumber: 74, date: "2026-06-29", time: "4:30 PM ET", group: "R32", team1: "Germany", team2: "Paraguay", team1Flag: "🇩🇪", team2Flag: "🇵🇾", venue: "Gillette Stadium", city: "Foxborough", status: "upcoming" },
+  { id: "m75", matchNumber: 75, date: "2026-06-29", time: "9:00 PM ET", group: "R32", team1: "Netherlands", team2: "Morocco", team1Flag: "🇳🇱", team2Flag: "🇲🇦", venue: "Estadio BBVA", city: "Monterrey", status: "upcoming" },
+  // June 30
+  { id: "m78", matchNumber: 78, date: "2026-06-30", time: "1:00 PM ET", group: "R32", team1: "Ivory Coast", team2: "Norway", team1Flag: "🇨🇮", team2Flag: "🇳🇴", venue: "AT&T Stadium", city: "Arlington", status: "upcoming" },
+  { id: "m77", matchNumber: 77, date: "2026-06-30", time: "5:00 PM ET", group: "R32", team1: "France", team2: "Sweden", team1Flag: "🇫🇷", team2Flag: "🇸🇪", venue: "MetLife Stadium", city: "East Rutherford", status: "upcoming" },
+  { id: "m79", matchNumber: 79, date: "2026-06-30", time: "9:00 PM ET", group: "R32", team1: "Mexico", team2: "Ecuador", team1Flag: "🇲🇽", team2Flag: "🇪🇨", venue: "Estadio Azteca", city: "Mexico City", status: "upcoming" },
+  // July 1
+  { id: "m80", matchNumber: 80, date: "2026-07-01", time: "12:00 PM ET", group: "R32", team1: "England", team2: "DR Congo", team1Flag: "🏴󠁧󠁢󠁥󠁮󠁧󠁿", team2Flag: "🇨🇩", venue: "Mercedes-Benz Stadium", city: "Atlanta", status: "upcoming" },
+  { id: "m82", matchNumber: 82, date: "2026-07-01", time: "4:00 PM ET", group: "R32", team1: "Belgium", team2: "Senegal", team1Flag: "🇧🇪", team2Flag: "🇸🇳", venue: "Lumen Field", city: "Seattle", status: "upcoming" },
+  { id: "m81", matchNumber: 81, date: "2026-07-01", time: "8:00 PM ET", group: "R32", team1: "United States", team2: "Bosnia and Herzegovina", team1Flag: "🇺🇸", team2Flag: "🇧🇦", venue: "Levi's Stadium", city: "Santa Clara", status: "upcoming" },
+  // July 2
+  { id: "m84", matchNumber: 84, date: "2026-07-02", time: "3:00 PM ET", group: "R32", team1: "Spain", team2: "Austria", team1Flag: "🇪🇸", team2Flag: "🇦🇹", venue: "SoFi Stadium", city: "Inglewood", status: "upcoming" },
+  { id: "m83", matchNumber: 83, date: "2026-07-02", time: "7:00 PM ET", group: "R32", team1: "Portugal", team2: "Croatia", team1Flag: "🇵🇹", team2Flag: "🇭🇷", venue: "BMO Field", city: "Toronto", status: "upcoming" },
+  { id: "m85", matchNumber: 85, date: "2026-07-02", time: "11:00 PM ET", group: "R32", team1: "Switzerland", team2: "Algeria", team1Flag: "🇨🇭", team2Flag: "🇩🇿", venue: "BC Place", city: "Vancouver", status: "upcoming" },
+  // July 3
+  { id: "m88", matchNumber: 88, date: "2026-07-03", time: "2:00 PM ET", group: "R32", team1: "Australia", team2: "Egypt", team1Flag: "🇦🇺", team2Flag: "🇪🇬", venue: "AT&T Stadium", city: "Arlington", status: "upcoming" },
+  { id: "m86", matchNumber: 86, date: "2026-07-03", time: "6:00 PM ET", group: "R32", team1: "Argentina", team2: "Cape Verde", team1Flag: "🇦🇷", team2Flag: "🇨🇻", venue: "Hard Rock Stadium", city: "Miami", status: "upcoming" },
+  { id: "m87", matchNumber: 87, date: "2026-07-03", time: "9:30 PM ET", group: "R32", team1: "Colombia", team2: "Ghana", team1Flag: "🇨🇴", team2Flag: "🇬🇭", venue: "Arrowhead Stadium", city: "Kansas City", status: "upcoming" },
+
+  // ── ROUND OF 16 ──
+  // July 4
+  { id: "m90", matchNumber: 90, date: "2026-07-04", time: "12:00 PM ET", group: "R16", team1: "TBD", team2: "TBD", team1Flag: "🏆", team2Flag: "🏆", venue: "NRG Stadium", city: "Houston", status: "upcoming", team1Qualifier: "Winner of Match 73", team2Qualifier: "Winner of Match 75" },
+  { id: "m89", matchNumber: 89, date: "2026-07-04", time: "4:00 PM ET", group: "R16", team1: "TBD", team2: "TBD", team1Flag: "🏆", team2Flag: "🏆", venue: "Lincoln Financial Field", city: "Philadelphia", status: "upcoming", team1Qualifier: "Winner of Match 74", team2Qualifier: "Winner of Match 77" },
+  // July 5
+  { id: "m91", matchNumber: 91, date: "2026-07-05", time: "4:00 PM ET", group: "R16", team1: "TBD", team2: "TBD", team1Flag: "🏆", team2Flag: "🏆", venue: "MetLife Stadium", city: "East Rutherford", status: "upcoming", team1Qualifier: "Winner of Match 76", team2Qualifier: "Winner of Match 78" },
+  { id: "m92", matchNumber: 92, date: "2026-07-05", time: "8:00 PM ET", group: "R16", team1: "TBD", team2: "TBD", team1Flag: "🏆", team2Flag: "🏆", venue: "Estadio Azteca", city: "Mexico City", status: "upcoming", team1Qualifier: "Winner of Match 79", team2Qualifier: "Winner of Match 80" },
+  // July 6
+  { id: "m93", matchNumber: 93, date: "2026-07-06", time: "3:00 PM ET", group: "R16", team1: "TBD", team2: "TBD", team1Flag: "🏆", team2Flag: "🏆", venue: "AT&T Stadium", city: "Arlington", status: "upcoming", team1Qualifier: "Winner of Match 83", team2Qualifier: "Winner of Match 84" },
+  { id: "m94", matchNumber: 94, date: "2026-07-06", time: "5:00 PM ET", group: "R16", team1: "TBD", team2: "TBD", team1Flag: "🏆", team2Flag: "🏆", venue: "Lumen Field", city: "Seattle", status: "upcoming", team1Qualifier: "Winner of Match 81", team2Qualifier: "Winner of Match 82" },
+  // July 7
+  { id: "m95", matchNumber: 95, date: "2026-07-07", time: "12:00 PM ET", group: "R16", team1: "TBD", team2: "TBD", team1Flag: "🏆", team2Flag: "🏆", venue: "Mercedes-Benz Stadium", city: "Atlanta", status: "upcoming", team1Qualifier: "Winner of Match 86", team2Qualifier: "Winner of Match 88" },
+  { id: "m96", matchNumber: 96, date: "2026-07-07", time: "4:00 PM ET", group: "R16", team1: "TBD", team2: "TBD", team1Flag: "🏆", team2Flag: "🏆", venue: "BC Place", city: "Vancouver", status: "upcoming", team1Qualifier: "Winner of Match 85", team2Qualifier: "Winner of Match 87" },
+
+  // ── QUARTER-FINALS ──
+  { id: "m97", matchNumber: 97, date: "2026-07-09", time: "4:00 PM ET", group: "QF", team1: "TBD", team2: "TBD", team1Flag: "🏆", team2Flag: "🏆", venue: "Gillette Stadium", city: "Foxborough", status: "upcoming", team1Qualifier: "Winner of Match 89", team2Qualifier: "Winner of Match 90" },
+  { id: "m98", matchNumber: 98, date: "2026-07-10", time: "3:00 PM ET", group: "QF", team1: "TBD", team2: "TBD", team1Flag: "🏆", team2Flag: "🏆", venue: "SoFi Stadium", city: "Inglewood", status: "upcoming", team1Qualifier: "Winner of Match 93", team2Qualifier: "Winner of Match 94" },
+  { id: "m99", matchNumber: 99, date: "2026-07-11", time: "4:00 PM ET", group: "QF", team1: "TBD", team2: "TBD", team1Flag: "🏆", team2Flag: "🏆", venue: "Hard Rock Stadium", city: "Miami", status: "upcoming", team1Qualifier: "Winner of Match 91", team2Qualifier: "Winner of Match 92" },
+  { id: "m100", matchNumber: 100, date: "2026-07-11", time: "8:00 PM ET", group: "QF", team1: "TBD", team2: "TBD", team1Flag: "🏆", team2Flag: "🏆", venue: "Arrowhead Stadium", city: "Kansas City", status: "upcoming", team1Qualifier: "Winner of Match 95", team2Qualifier: "Winner of Match 96" },
+
+  // ── SEMI-FINALS ──
+  { id: "m101", matchNumber: 101, date: "2026-07-14", time: "3:00 PM ET", group: "SF", team1: "TBD", team2: "TBD", team1Flag: "🏆", team2Flag: "🏆", venue: "AT&T Stadium", city: "Arlington", status: "upcoming", team1Qualifier: "Winner of Match 97", team2Qualifier: "Winner of Match 98" },
+  { id: "m102", matchNumber: 102, date: "2026-07-15", time: "3:00 PM ET", group: "SF", team1: "TBD", team2: "TBD", team1Flag: "🏆", team2Flag: "🏆", venue: "Mercedes-Benz Stadium", city: "Atlanta", status: "upcoming", team1Qualifier: "Winner of Match 99", team2Qualifier: "Winner of Match 100" },
+
+  // ── 3RD PLACE PLAY-OFF ──
+  { id: "m103", matchNumber: 103, date: "2026-07-18", time: "5:00 PM ET", group: "3PL", team1: "TBD", team2: "TBD", team1Flag: "🥉", team2Flag: "🥉", venue: "Hard Rock Stadium", city: "Miami", status: "upcoming", team1Qualifier: "Loser of Match 101", team2Qualifier: "Loser of Match 102" },
+
+  // ── FINAL ──
+  { id: "m104", matchNumber: 104, date: "2026-07-19", time: "3:00 PM ET", group: "F", team1: "TBD", team2: "TBD", team1Flag: "🏆", team2Flag: "🏆", venue: "MetLife Stadium", city: "East Rutherford", status: "upcoming", team1Qualifier: "Winner of Match 101", team2Qualifier: "Winner of Match 102" },
 ];
+
+export function getStageLabel(group: string): string {
+  const map: Record<string, string> = {
+    R32: "Round of 32", R16: "Round of 16",
+    QF: "Quarter-final", SF: "Semi-final",
+    "3PL": "3rd Place", F: "Final",
+  };
+  return map[group] ?? `Group ${group}`;
+}
+
+export function isKnockout(group: string): boolean {
+  return ["R32", "R16", "QF", "SF", "3PL", "F"].includes(group);
+}
 
 export const GROUPS: Record<string, string[]> = {
   A: ["Mexico", "South Africa", "South Korea", "Czechia"],

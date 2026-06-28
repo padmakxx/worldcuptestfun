@@ -2,7 +2,7 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { Match } from "@/lib/data/matches";
+import { Match, getStageLabel, isKnockout } from "@/lib/data/matches";
 import dynamic from "next/dynamic";
 const LineupPanel = dynamic(() => import("@/components/LineupPanel"), { ssr: false });
 import { Player } from "@/lib/data/players";
@@ -85,9 +85,11 @@ export default function PredictForm({ match, players }: Props) {
     if (score1 === "" || score2 === "") return null;
     if (s1 > s2) return { text: `${match.team1} Win`, color: "text-emerald-400" };
     if (s2 > s1) return { text: `${match.team2} Win`, color: "text-blue-400" };
-    return { text: "Draw", color: "text-yellow-400" };
+    return { text: knockout ? "Draw → AET/Pens" : "Draw", color: "text-yellow-400" };
   };
 
+  const stageLabel = getStageLabel(match.group);
+  const knockout = isKnockout(match.group);
   const outcome = outcomeLabel();
   const dateStr = new Date(match.date + "T12:00:00").toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric", year: "numeric" });
 
@@ -115,9 +117,15 @@ export default function PredictForm({ match, players }: Props) {
         {/* Match header */}
         <div className="card-glow rounded-3xl p-8 mb-6 text-center">
           <div className="text-sm text-gray-400 mb-1">{dateStr} · {match.time}</div>
-          <div className="inline-flex items-center gap-2 bg-yellow-400/20 text-yellow-400 text-xs font-bold px-3 py-1 rounded-full mb-6">
-            Group {match.group} · Match {match.matchNumber}
+          <div className={`inline-flex items-center gap-2 text-xs font-bold px-3 py-1 rounded-full mb-3 ${knockout ? "bg-red-500/20 text-red-400" : "bg-yellow-400/20 text-yellow-400"}`}>
+            {stageLabel} · Match {match.matchNumber}
+            {knockout && <span>⚔️</span>}
           </div>
+          {knockout && (
+            <div className="mb-4 text-xs text-center bg-orange-500/10 border border-orange-500/20 text-orange-300 rounded-xl px-4 py-2">
+              ⚡ Knockout — predict 90-min score. A draw leads to extra time &amp; penalties.
+            </div>
+          )}
 
           <div className="flex items-center justify-center gap-6 mb-4">
             <div className="text-center flex-1">
@@ -287,13 +295,14 @@ export default function PredictForm({ match, players }: Props) {
           <div className="bg-white/3 rounded-2xl p-4 text-sm text-gray-400">
             <div className="font-bold text-white mb-2">📊 Potential Points</div>
             <div className="space-y-1">
-              <div className="flex justify-between"><span>Correct result (W/D/L)</span><span className="text-emerald-400 font-bold">+1</span></div>
-              <div className="flex justify-between"><span>Exact score (bonus)</span><span className="text-emerald-400 font-bold">+4</span></div>
-              <div className="flex justify-between"><span>Man of the Match</span><span className="text-purple-400 font-bold">+3</span></div>
-              <div className="flex justify-between"><span>First Scorer</span><span className="text-orange-400 font-bold">+5</span></div>
+              <div className="flex justify-between"><span>Correct result (W/D/L)</span><span className="text-emerald-400 font-bold">+3</span></div>
+              <div className="flex justify-between"><span>Exact score (bonus)</span><span className="text-emerald-400 font-bold">+8</span></div>
+              <div className="flex justify-between"><span>Man of the Match</span><span className="text-purple-400 font-bold">+5</span></div>
+              <div className="flex justify-between"><span>First Scorer</span><span className="text-orange-400 font-bold">+10</span></div>
+              <div className="flex justify-between"><span>Both Teams Score (BTTS)</span><span className="text-cyan-400 font-bold">+2</span></div>
               <div className="border-t border-white/10 mt-2 pt-2 flex justify-between">
                 <span className="font-bold text-white">Max per match</span>
-                <span className="font-black text-yellow-400">+13 pts</span>
+                <span className="font-black text-yellow-400">+28 pts</span>
               </div>
             </div>
           </div>

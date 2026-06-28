@@ -29,6 +29,7 @@ export interface LeaderboardEntry {
   exactScores: number;
   motmCorrect: number;
   firstScorerCorrect: number;
+  bttsCorrect: number;
 }
 
 function getOutcome(t1: number, t2: number): "home" | "draw" | "away" {
@@ -67,10 +68,12 @@ export function calculatePoints(pred: Prediction, result: MatchResult): number {
   const predOutcome = getOutcome(pred.team1Score, pred.team2Score);
   const actualOutcome = getOutcome(result.team1Score, result.team2Score);
 
-  if (predOutcome === actualOutcome) pts += 1;
-  if (pred.team1Score === result.team1Score && pred.team2Score === result.team2Score) pts += 4;
-  if (namesMatch(pred.motm, result.motm)) pts += 3;
-  if (namesMatch(pred.firstScorer, result.firstScorer)) pts += 5;
+  if (predOutcome === actualOutcome) pts += 3;
+  if (pred.team1Score === result.team1Score && pred.team2Score === result.team2Score) pts += 8;
+  if (namesMatch(pred.motm, result.motm)) pts += 5;
+  if (namesMatch(pred.firstScorer, result.firstScorer)) pts += 10;
+  // BTTS bonus: both teams scored in prediction AND in actual result
+  if (pred.team1Score > 0 && pred.team2Score > 0 && result.team1Score > 0 && result.team2Score > 0) pts += 2;
 
   return pts;
 }
@@ -105,6 +108,7 @@ export async function computeLeaderboard(users: { id: string; username: string; 
     let exactScores = 0;
     let motmCorrect = 0;
     let firstScorerCorrect = 0;
+    let bttsCorrect = 0;
 
     const predictions = await kgetall<Prediction>(`pred:${user.id}:`);
 
@@ -118,11 +122,12 @@ export async function computeLeaderboard(users: { id: string; username: string; 
       if (pred.team1Score === result.team1Score && pred.team2Score === result.team2Score) exactScores++;
       if (namesMatch(pred.motm, result.motm)) motmCorrect++;
       if (namesMatch(pred.firstScorer, result.firstScorer)) firstScorerCorrect++;
+      if (pred.team1Score > 0 && pred.team2Score > 0 && result.team1Score > 0 && result.team2Score > 0) bttsCorrect++;
 
       totalPoints += calculatePoints(pred, result);
     }
 
-    entries.push({ userId: user.id, username: user.username, nickname: user.nickname, totalPoints, correctResults, exactScores, motmCorrect, firstScorerCorrect });
+    entries.push({ userId: user.id, username: user.username, nickname: user.nickname, totalPoints, correctResults, exactScores, motmCorrect, firstScorerCorrect, bttsCorrect });
   }
 
   return entries.sort((a, b) => b.totalPoints - a.totalPoints);

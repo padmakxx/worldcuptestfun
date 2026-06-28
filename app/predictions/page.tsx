@@ -1,6 +1,6 @@
 import { getSession, getUser, getAllUsers } from "@/lib/auth";
 import { redirect } from "next/navigation";
-import { MATCHES } from "@/lib/data/matches";
+import { MATCHES, getStageLabel, isKnockout } from "@/lib/data/matches";
 import { calculatePoints, namesMatch } from "@/lib/scoring";
 import { kgetall, kmget } from "@/lib/store";
 import type { Prediction } from "@/lib/scoring";
@@ -126,7 +126,7 @@ export default async function PredictionsPage({
                   {/* Match header */}
                   <div className="px-6 py-5 border-b border-white/5" style={{ background: "rgba(255,215,0,0.03)" }}>
                     <div className="flex items-center gap-2 text-xs text-gray-400 mb-3">
-                      <span className="bg-yellow-400/20 text-yellow-400 px-2 py-0.5 rounded-full font-bold">Group {match.group}</span>
+                      <span className={`px-2 py-0.5 rounded-full font-bold ${isKnockout(match.group) ? "bg-red-500/20 text-red-400" : "bg-yellow-400/20 text-yellow-400"}`}>{getStageLabel(match.group)}</span>
                       <span>{dateStr(match.date)}</span>
                       <span className="text-gray-600">· {match.city}</span>
                     </div>
