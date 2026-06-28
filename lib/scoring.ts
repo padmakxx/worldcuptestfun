@@ -9,6 +9,10 @@ export interface Prediction {
   firstScorer: string;
   submittedAt: string;
   points?: number;
+  // Knockout tiebreaker predictions (only set for knockout matches when user predicted a draw)
+  predictedPenalties?: boolean;
+  penaltyTeam1?: number;
+  penaltyTeam2?: number;
 }
 
 export interface MatchResult {
@@ -18,6 +22,10 @@ export interface MatchResult {
   motm: string;
   firstScorer: string;
   settledAt: string;
+  // Knockout tiebreaker results
+  wentToPenalties?: boolean;
+  penaltyTeam1?: number;
+  penaltyTeam2?: number;
 }
 
 export interface LeaderboardEntry {
@@ -81,6 +89,22 @@ export function calculatePoints(pred: Prediction, result: MatchResult): number {
     if (namesMatch(pred.motm, result.motm)) pts += 5;
     if (namesMatch(pred.firstScorer, result.firstScorer)) pts += 10;
     if (pred.team1Score > 0 && pred.team2Score > 0 && result.team1Score > 0 && result.team2Score > 0) pts += 2;
+
+    // AET prediction: draw prediction == draw at 90 min → +5
+    const predDraw = pred.team1Score === pred.team2Score;
+    const actualDraw = result.team1Score === result.team2Score;
+    if (predDraw === actualDraw) pts += 5;
+
+    // Penalties prediction (only meaningful when user predicted a draw → AET)
+    if (predDraw && pred.predictedPenalties !== undefined) {
+      if (pred.predictedPenalties === (result.wentToPenalties ?? false)) pts += 8;
+      // Exact penalty score
+      if (
+        pred.predictedPenalties && result.wentToPenalties &&
+        pred.penaltyTeam1 !== undefined && pred.penaltyTeam2 !== undefined &&
+        pred.penaltyTeam1 === result.penaltyTeam1 && pred.penaltyTeam2 === result.penaltyTeam2
+      ) pts += 15;
+    }
   } else {
     // Original scoring — group stage
     if (predOutcome === actualOutcome) pts += 1;

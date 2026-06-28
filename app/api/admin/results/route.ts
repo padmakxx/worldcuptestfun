@@ -8,7 +8,7 @@ export async function POST(req: NextRequest) {
   const session = await getSession();
   if (!session?.isAdmin) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
-  const { matchId, team1Score, team2Score, motm, firstScorer } = await req.json();
+  const { matchId, team1Score, team2Score, motm, firstScorer, wentToPenalties, penaltyTeam1, penaltyTeam2 } = await req.json();
 
   const match = MATCHES.find(m => m.id === matchId);
   if (!match) return NextResponse.json({ error: "Match not found" }, { status: 404 });
@@ -20,6 +20,9 @@ export async function POST(req: NextRequest) {
     motm: motm || "",
     firstScorer: firstScorer || "",
     settledAt: new Date().toISOString(),
+    ...(wentToPenalties !== undefined ? { wentToPenalties: Boolean(wentToPenalties) } : {}),
+    ...(penaltyTeam1 !== undefined ? { penaltyTeam1: Number(penaltyTeam1) } : {}),
+    ...(penaltyTeam2 !== undefined ? { penaltyTeam2: Number(penaltyTeam2) } : {}),
   };
 
   await saveResult(result);

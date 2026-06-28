@@ -28,6 +28,10 @@ export default function PredictForm({ match, players }: Props) {
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState("");
   const [lineup, setLineup] = useState<ESPNLineup | null>(null);
+  // Knockout tiebreaker state
+  const [predictedPenalties, setPredictedPenalties] = useState<boolean | undefined>(undefined);
+  const [penaltyScore1, setPenaltyScore1] = useState("");
+  const [penaltyScore2, setPenaltyScore2] = useState("");
   const router = useRouter();
 
   useEffect(() => {
@@ -67,11 +71,21 @@ export default function PredictForm({ match, players }: Props) {
     e.preventDefault();
     setError("");
     if (score1 === "" || score2 === "") { setError("Please enter score predictions"); return; }
+    if (showKnockoutExtras && predictedPenalties === undefined) { setError("Please predict whether the match goes to penalties"); return; }
+    if (showKnockoutExtras && predictedPenalties && (penaltyScore1 === "" || penaltyScore2 === "")) { setError("Please enter your predicted penalty score"); return; }
     setLoading(true);
+    const body: Record<string, unknown> = { matchId: match.id, team1Score: Number(score1), team2Score: Number(score2), motm, firstScorer };
+    if (showKnockoutExtras) {
+      body.predictedPenalties = predictedPenalties;
+      if (predictedPenalties) {
+        body.penaltyTeam1 = Number(penaltyScore1);
+        body.penaltyTeam2 = Number(penaltyScore2);
+      }
+    }
     const res = await fetch("/api/predictions", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ matchId: match.id, team1Score: Number(score1), team2Score: Number(score2), motm, firstScorer }),
+      body: JSON.stringify(body),
     });
     const data = await res.json();
     setLoading(false);
@@ -90,6 +104,8 @@ export default function PredictForm({ match, players }: Props) {
 
   const stageLabel = getStageLabel(match.group);
   const knockout = isKnockout(match.group);
+  const isDraw = score1 !== "" && score2 !== "" && Number(score1) === Number(score2);
+  const showKnockoutExtras = knockout && isDraw;
   const outcome = outcomeLabel();
   const dateStr = new Date(match.date + "T12:00:00").toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric", year: "numeric" });
 
@@ -190,6 +206,74 @@ export default function PredictForm({ match, players }: Props) {
               </div>
             )}
           </div>
+
+          {/* ── KNOCKOUT EXTRAS ── shown only when predicting a draw in a knockout match */}
+          {showKnockoutExtras && (
+            <div className="rounded-3xl p-6 space-y-6" style={{background:"linear-gradient(135deg,rgba(239,68,68,0.08),rgba(234,179,8,0.06))",border:"1px solid rgba(239,68,68,0.25)"}}>
+              <div>
+                <h3 className="font-black text-lg text-white mb-1">⚡ Extra Time &amp; Penalties</h3>
+                <p className="text-sm text-gray-400">You predicted a draw — match goes to AET. Now predict what happens next.</p>
+              </div>
+
+              {/* AET info banner */}
+              <div className="flex items-center gap-3 bg-orange-500/10 border border-orange-500/20 rounded-2xl px-4 py-3">
+                <span className="text-2xl">⏱️</span>
+                <div>
+                  <div className="text-orange-300 font-bold text-sm">Extra Time prediction: locked in ✓</div>
+                  <div className="text-orange-400/70 text-xs">Drawing at 90 min = predicting AET · <span className="font-bold text-orange-300">+5 pts</span> if the match actually goes to AET</div>
+                </div>
+              </div>
+
+              {/* Penalties toggle */}
+              <div>
+                <div className="font-bold text-white mb-3">🎯 Will it go to Penalties?</div>
+                <div className="grid grid-cols-2 gap-3">
+                  <button type="button"
+                    onClick={() => setPredictedPenalties(true)}
+                    className={`py-4 rounded-2xl font-black text-sm transition-all ${predictedPenalties === true ? "bg-red-500/30 text-red-200 border-2 border-red-400/60 shadow-lg shadow-red-900/20" : "bg-white/5 text-gray-400 border border-white/10 hover:bg-white/8"}`}>
+                    🔴 Yes — Penalties!
+                    <div className="text-xs font-normal mt-0.5 opacity-70">+8 pts if correct</div>
+                  </button>
+                  <button type="button"
+                    onClick={() => { setPredictedPenalties(false); setPenaltyScore1(""); setPenaltyScore2(""); }}
+                    className={`py-4 rounded-2xl font-black text-sm transition-all ${predictedPenalties === false ? "bg-emerald-500/30 text-emerald-200 border-2 border-emerald-400/60 shadow-lg shadow-emerald-900/20" : "bg-white/5 text-gray-400 border border-white/10 hover:bg-white/8"}`}>
+                    🟢 No — AET decides
+                    <div className="text-xs font-normal mt-0.5 opacity-70">+8 pts if correct</div>
+                  </button>
+                </div>
+              </div>
+
+              {/* Penalty score — only when penalties predicted */}
+              {predictedPenalties === true && (
+                <div>
+                  <div className="font-bold text-white mb-1">🥅 Penalty Shootout Score</div>
+                  <p className="text-xs text-gray-400 mb-5">Predict the final penalty kick tally (e.g. 4–2) · <span className="text-yellow-400 font-bold">+15 pts</span> if exact!</p>
+                  <div className="flex items-center justify-center gap-4">
+                    <div className="text-center">
+                      <div className="text-3xl mb-2">{match.team1Flag}</div>
+                      <input type="number" min={0} max={9} value={penaltyScore1}
+                        onChange={e => setPenaltyScore1(e.target.value)}
+                        placeholder="0" className="score-input" />
+                    </div>
+                    <div className="text-3xl font-black text-red-400 pb-2">–</div>
+                    <div className="text-center">
+                      <div className="text-3xl mb-2">{match.team2Flag}</div>
+                      <input type="number" min={0} max={9} value={penaltyScore2}
+                        onChange={e => setPenaltyScore2(e.target.value)}
+                        placeholder="0" className="score-input" />
+                    </div>
+                  </div>
+                  {penaltyScore1 !== "" && penaltyScore2 !== "" && (
+                    <div className="mt-4 text-center">
+                      <span className="inline-block bg-red-500/20 border border-red-500/30 text-red-300 font-black px-4 py-1.5 rounded-full text-sm">
+                        Pens: {match.team1Flag} {penaltyScore1}–{penaltyScore2} {match.team2Flag}
+                      </span>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
 
           {/* MOTM */}
           <div className="card-glow rounded-3xl p-6">
@@ -317,6 +401,14 @@ export default function PredictForm({ match, players }: Props) {
                     <span className="font-bold text-white">Max per match</span>
                     <span className="font-black text-yellow-400">+13 pts</span>
                   </div>
+                </>
+              )}
+              {knockout && (
+                <>
+                  <div className="border-t border-white/10 mt-2 pt-2 text-xs text-gray-500 font-bold uppercase tracking-wider mb-1">Knockout Bonuses</div>
+                  <div className="flex justify-between text-xs"><span>Correct AET prediction (draw = AET)</span><span className="text-orange-400 font-bold">+5</span></div>
+                  <div className="flex justify-between text-xs"><span>Correct penalties prediction</span><span className="text-red-400 font-bold">+8</span></div>
+                  <div className="flex justify-between text-xs"><span>Exact penalty score</span><span className="text-yellow-400 font-bold">+15</span></div>
                 </>
               )}
             </div>

@@ -1,7 +1,7 @@
 "use client";
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { Match } from "@/lib/data/matches";
+import { Match, isKnockout } from "@/lib/data/matches";
 import { getPlayersForMatch } from "@/lib/data/players";
 import type { ESPNLineup } from "@/lib/espn";
 
@@ -45,6 +45,12 @@ export default function ResultForm({ match }: { match: MatchWithResult }) {
   const [fetching, setFetching] = useState(false);
   const [fetchMsg, setFetchMsg] = useState<{ ok: boolean; text: string } | null>(null);
   const [success, setSuccess] = useState(false);
+  // Knockout tiebreaker state
+  const [wentToPenalties, setWentToPenalties] = useState<boolean | undefined>(undefined);
+  const [penaltyScore1, setPenaltyScore1] = useState("");
+  const [penaltyScore2, setPenaltyScore2] = useState("");
+  const knockout = isKnockout(match.group);
+  const isDrawScore = score1 !== "" && score2 !== "" && Number(score1) === Number(score2);
   const [lineup, setLineup] = useState<ESPNLineup | null>(null);
   const router = useRouter();
 
@@ -92,7 +98,14 @@ export default function ResultForm({ match }: { match: MatchWithResult }) {
     const res = await fetch("/api/admin/results", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ matchId: match.id, team1Score: Number(score1), team2Score: Number(score2), motm, firstScorer }),
+      body: JSON.stringify({
+        matchId: match.id, team1Score: Number(score1), team2Score: Number(score2), motm, firstScorer,
+        ...(knockout && isDrawScore ? {
+          wentToPenalties: wentToPenalties ?? false,
+          penaltyTeam1: wentToPenalties ? Number(penaltyScore1) : undefined,
+          penaltyTeam2: wentToPenalties ? Number(penaltyScore2) : undefined,
+        } : {}),
+      }),
     });
     setLoading(false);
     if (res.ok) { setSuccess(true); router.refresh(); }
@@ -159,6 +172,42 @@ export default function ResultForm({ match }: { match: MatchWithResult }) {
             className="w-full px-3 py-2.5 rounded-lg text-white placeholder-gray-500 text-sm"
             style={{background:"rgba(255,255,255,0.06)",border:"1px solid rgba(255,255,255,0.1)"}} />
         </div>
+
+        {/* Knockout AET/Penalties — only for knockout matches with a draw score */}
+        {knockout && isDrawScore && (
+          <div className="rounded-xl p-4 space-y-4" style={{background:"rgba(239,68,68,0.07)",border:"1px solid rgba(239,68,68,0.2)"}}>
+            <div className="font-bold text-white text-sm">⚡ Knockout — AET &amp; Penalties</div>
+            <p className="text-xs text-gray-400">Score is a draw → match went to AET. Did it go to penalties?</p>
+            <div className="grid grid-cols-2 gap-2">
+              <button type="button" onClick={() => setWentToPenalties(true)}
+                className={`py-2.5 rounded-lg font-bold text-xs transition-all ${wentToPenalties === true ? "bg-red-500/30 text-red-300 border border-red-500/40" : "bg-white/5 text-gray-400 border border-white/10 hover:bg-white/8"}`}>
+                🔴 Yes — Went to Penalties
+              </button>
+              <button type="button" onClick={() => { setWentToPenalties(false); setPenaltyScore1(""); setPenaltyScore2(""); }}
+                className={`py-2.5 rounded-lg font-bold text-xs transition-all ${wentToPenalties === false ? "bg-emerald-500/30 text-emerald-300 border border-emerald-500/40" : "bg-white/5 text-gray-400 border border-white/10 hover:bg-white/8"}`}>
+                🟢 No — AET decided it
+              </button>
+            </div>
+            {wentToPenalties === true && (
+              <div>
+                <label className="block text-xs font-semibold text-gray-300 mb-2">🥅 Penalty Score</label>
+                <div className="flex items-center gap-3 justify-center">
+                  <div className="text-center">
+                    <div className="text-lg mb-1">{match.team1Flag}</div>
+                    <input type="number" min={0} max={9} value={penaltyScore1} onChange={e => setPenaltyScore1(e.target.value)}
+                      className="score-input" placeholder="0" />
+                  </div>
+                  <span className="text-gray-400 font-bold pb-2">–</span>
+                  <div className="text-center">
+                    <div className="text-lg mb-1">{match.team2Flag}</div>
+                    <input type="number" min={0} max={9} value={penaltyScore2} onChange={e => setPenaltyScore2(e.target.value)}
+                      className="score-input" placeholder="0" />
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
 
         <button type="submit" disabled={loading} className="btn-gold w-full py-3 rounded-xl font-bold">
           {loading ? "Saving..." : "✅ Save Result & Score Predictions"}
