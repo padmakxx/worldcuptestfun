@@ -295,15 +295,30 @@ export default function PredictForm({ match, players }: Props) {
           <div className="bg-white/3 rounded-2xl p-4 text-sm text-gray-400">
             <div className="font-bold text-white mb-2">📊 Potential Points</div>
             <div className="space-y-1">
-              <div className="flex justify-between"><span>Correct result (W/D/L)</span><span className="text-emerald-400 font-bold">+3</span></div>
-              <div className="flex justify-between"><span>Exact score (bonus)</span><span className="text-emerald-400 font-bold">+8</span></div>
-              <div className="flex justify-between"><span>Man of the Match</span><span className="text-purple-400 font-bold">+5</span></div>
-              <div className="flex justify-between"><span>First Scorer</span><span className="text-orange-400 font-bold">+10</span></div>
-              <div className="flex justify-between"><span>Both Teams Score (BTTS)</span><span className="text-cyan-400 font-bold">+2</span></div>
-              <div className="border-t border-white/10 mt-2 pt-2 flex justify-between">
-                <span className="font-bold text-white">Max per match</span>
-                <span className="font-black text-yellow-400">+28 pts</span>
-              </div>
+              {knockout ? (
+                <>
+                  <div className="flex justify-between"><span>Correct result (W/D/L)</span><span className="text-emerald-400 font-bold">+3</span></div>
+                  <div className="flex justify-between"><span>Exact score (bonus)</span><span className="text-emerald-400 font-bold">+8</span></div>
+                  <div className="flex justify-between"><span>Man of the Match</span><span className="text-purple-400 font-bold">+5</span></div>
+                  <div className="flex justify-between"><span>First Scorer</span><span className="text-orange-400 font-bold">+10</span></div>
+                  <div className="flex justify-between"><span>Both Teams Score (BTTS)</span><span className="text-cyan-400 font-bold">+2</span></div>
+                  <div className="border-t border-white/10 mt-2 pt-2 flex justify-between">
+                    <span className="font-bold text-white">Max per match</span>
+                    <span className="font-black text-yellow-400">+28 pts</span>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div className="flex justify-between"><span>Correct result (W/D/L)</span><span className="text-emerald-400 font-bold">+1</span></div>
+                  <div className="flex justify-between"><span>Exact score (bonus)</span><span className="text-emerald-400 font-bold">+4</span></div>
+                  <div className="flex justify-between"><span>Man of the Match</span><span className="text-purple-400 font-bold">+3</span></div>
+                  <div className="flex justify-between"><span>First Scorer</span><span className="text-orange-400 font-bold">+5</span></div>
+                  <div className="border-t border-white/10 mt-2 pt-2 flex justify-between">
+                    <span className="font-bold text-white">Max per match</span>
+                    <span className="font-black text-yellow-400">+13 pts</span>
+                  </div>
+                </>
+              )}
             </div>
           </div>
 

@@ -63,17 +63,31 @@ export function namesMatch(a?: string, b?: string): boolean {
   ));
 }
 
+// matchId "m1"–"m72" = group stage (old rules); "m73"+ = knockout (new rules)
+function isKnockoutMatch(matchId: string): boolean {
+  const num = parseInt(matchId.replace("m", ""), 10);
+  return num >= 73;
+}
+
 export function calculatePoints(pred: Prediction, result: MatchResult): number {
   let pts = 0;
   const predOutcome = getOutcome(pred.team1Score, pred.team2Score);
   const actualOutcome = getOutcome(result.team1Score, result.team2Score);
 
-  if (predOutcome === actualOutcome) pts += 3;
-  if (pred.team1Score === result.team1Score && pred.team2Score === result.team2Score) pts += 8;
-  if (namesMatch(pred.motm, result.motm)) pts += 5;
-  if (namesMatch(pred.firstScorer, result.firstScorer)) pts += 10;
-  // BTTS bonus: both teams scored in prediction AND in actual result
-  if (pred.team1Score > 0 && pred.team2Score > 0 && result.team1Score > 0 && result.team2Score > 0) pts += 2;
+  if (isKnockoutMatch(pred.matchId)) {
+    // New scoring — knockout stage (R32 onwards)
+    if (predOutcome === actualOutcome) pts += 3;
+    if (pred.team1Score === result.team1Score && pred.team2Score === result.team2Score) pts += 8;
+    if (namesMatch(pred.motm, result.motm)) pts += 5;
+    if (namesMatch(pred.firstScorer, result.firstScorer)) pts += 10;
+    if (pred.team1Score > 0 && pred.team2Score > 0 && result.team1Score > 0 && result.team2Score > 0) pts += 2;
+  } else {
+    // Original scoring — group stage
+    if (predOutcome === actualOutcome) pts += 1;
+    if (pred.team1Score === result.team1Score && pred.team2Score === result.team2Score) pts += 4;
+    if (namesMatch(pred.motm, result.motm)) pts += 3;
+    if (namesMatch(pred.firstScorer, result.firstScorer)) pts += 5;
+  }
 
   return pts;
 }
